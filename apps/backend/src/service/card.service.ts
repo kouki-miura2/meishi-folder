@@ -90,6 +90,8 @@ export interface CardView {
 export interface CardListFilter {
   q?: string
   topicIds?: string[]
+  /** `all` (default): every topic; `any`: at least one. */
+  match?: 'any' | 'all'
 }
 
 export interface CardService {
@@ -319,9 +321,9 @@ export const createCardService = ({
       ])
       return cards.map(masters.toSummary)
     },
-    list: async (userId, { q, topicIds }) => {
+    list: async (userId, { q, topicIds, match }) => {
       const [cards, masters] = await Promise.all([
-        cardRepository.list(userId, { q: cleanText(q) ?? undefined, topicIds }),
+        cardRepository.list(userId, { q: cleanText(q) ?? undefined, topicIds, match }),
         loadMasters(userId),
       ])
       return cards.map(masters.toSummary)

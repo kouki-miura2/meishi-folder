@@ -11,7 +11,6 @@ import type { CardService } from './service/card.service.ts'
 import type { CompanyService } from './service/company.service.ts'
 import type { DepartmentService } from './service/department.service.ts'
 import { ServiceError, type ServiceErrorCode } from './service/errors.ts'
-import type { SampleService } from './service/sample.service.ts'
 import type { TopicService } from './service/topic.service.ts'
 import type { UserService } from './service/user.service.ts'
 
@@ -23,7 +22,6 @@ export interface AuthConfig {
 }
 
 export interface AppDependencies {
-  sampleService: SampleService
   userService: UserService
   companyService: CompanyService
   departmentService: DepartmentService
@@ -150,16 +148,8 @@ export const createApp = (deps: AppDependencies) => {
         })
         return c.json({ error: 'Internal Server Error' }, 500)
       })
-      // Reference implementation of one endpoint through the app -> service -> repository -> dao
-      // layering: the runtime entrypoints wire the concrete dependencies, this route only talks
-      // to `SampleService`. Build real routes the same way, then delete this route and the
-      // `service/sample.*`, `repository/sample.*`, `dao/sample.*` files once they're not needed
-      // as a reference anymore.
-      .get('/sample/:id', async (c) => {
-        const sample = await deps.sampleService.getSample(c.req.param('id'))
-        if (!sample) return c.json({ error: 'Not Found' }, 404)
-        return c.json(sample)
-      })
+      // Each route only talks to its service; the runtime entrypoints wire the concrete
+      // dao -> repository -> service chain.
 
       // User profile (welcome screen)
       .get('/me', async (c) => c.json(await deps.userService.getMe(userIdOf(c))))
@@ -286,15 +276,20 @@ export const createApp = (deps: AppDependencies) => {
         '/cards',
         zValidator(
           'query',
-          // topicIds: comma-separated; a card must carry every one of them.
-          z.object({ q: text.optional(), topicIds: z.string().optional() }),
+          // topicIds: comma-separated; match: whether a card needs all of them (default) or any.
+          z.object({
+            q: text.optional(),
+            topicIds: z.string().optional(),
+            match: z.enum(['any', 'all']).optional(),
+          }),
         ),
         async (c) => {
-          const { q, topicIds } = c.req.valid('query')
+          const { q, topicIds, match } = c.req.valid('query')
           return c.json(
             await deps.cardService.list(userIdOf(c), {
               q,
               topicIds: topicIds?.split(',').filter(Boolean),
+              match,
             }),
           )
         },

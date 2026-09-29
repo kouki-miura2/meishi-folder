@@ -98,3 +98,19 @@ test('merge re-points cards, affiliations and departments, folding same-named de
   })
   expect(store.users[0]?.affiliations).toEqual([{ company_id: 'c-a', department_id: 'd-a-sales' }])
 })
+
+test('listByUser counts the cards and departments of each company', async () => {
+  const { store, dao } = setup()
+  store.departments.push({ id: 'd-1', user_id: 'user-1', company_id: 'c-a', name: '営業部' })
+  store.cards.push(
+    cardRecord({ company_id: 'c-a' }),
+    cardRecord({ id: 'card-2', company_id: 'c-a' }),
+  )
+
+  const companies = await dao.listByUser('user-1')
+
+  expect(companies).toEqual([
+    { id: 'c-a', user_id: 'user-1', name: 'A社', card_count: 2, department_count: 1 },
+    { id: 'c-b', user_id: 'user-1', name: 'B社', card_count: 0, department_count: 0 },
+  ])
+})

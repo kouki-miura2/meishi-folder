@@ -73,3 +73,11 @@ test('findById never crosses users', async () => {
 
   await expect(dao.findById('user-1', 'other-user')).resolves.toBeNull()
 })
+
+test('list with match any requires at least one requested topic', async () => {
+  const { dao } = setup()
+
+  const cards = await dao.list('user-1', { topicIds: ['t-1', 't-2'], match: 'any' })
+
+  expect(cards.map((c) => c.id)).toEqual(['name-only'])
+})

@@ -23,14 +23,16 @@ test('reads map the storage record to the domain entity', async () => {
   const repository = createDepartmentRepository(
     fakeDao({
       listByUser: async () => [record],
-      listByCompany: async () => [record],
+      listByCompany: async () => [{ ...record, card_count: 2 }],
       findById: async () => record,
       findByName: async () => record,
     }),
   )
 
   await expect(repository.list('user-1')).resolves.toEqual([department])
-  await expect(repository.listByCompany('user-1', 'c-1')).resolves.toEqual([department])
+  await expect(repository.listByCompany('user-1', 'c-1')).resolves.toEqual([
+    { ...department, cardCount: 2 },
+  ])
   await expect(repository.findById('user-1', 'd-1')).resolves.toEqual(department)
   await expect(repository.findByName('user-1', 'c-1', '営業部')).resolves.toEqual(department)
 })

@@ -98,3 +98,15 @@ test('merge re-points cards and affiliations without duplicates, then deletes th
   })
   await expect(dao.findById('user-1', 'd-2')).resolves.toBeNull()
 })
+
+test('listByCompany counts the cards of each department', async () => {
+  const { DB } = testEnv.env
+  await createCardDao(DB).insert(cardRecord({ company_id: 'c-1', department_ids: ['d-1'] }))
+
+  const departments = await createDepartmentDao(DB).listByCompany('user-1', 'c-1')
+
+  expect(departments.map((d) => [d.id, d.card_count])).toEqual([
+    ['d-1', 1],
+    ['d-2', 0],
+  ])
+})

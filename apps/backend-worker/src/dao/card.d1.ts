@@ -92,7 +92,7 @@ export const createCardDao = (db: D1Database): CardDao => {
   ]
 
   return {
-    list: async (userId, { q, topicIds = [] }) => {
+    list: async (userId, { q, topicIds = [], match = 'all' }) => {
       const textMatch = SEARCHED.map((column) => `c.${column} LIKE ?2 ESCAPE '\\'`).join(' OR ')
       const { results } = await db
         .prepare(
@@ -105,12 +105,13 @@ export const createCardDao = (db: D1Database): CardDao => {
                           WHERE cd.card_id = c.id AND d.name LIKE ?2 ESCAPE '\\')
                OR EXISTS (SELECT 1 FROM card_topics ct JOIN topics t ON t.id = ct.topic_id
                           WHERE ct.card_id = c.id AND t.name LIKE ?2 ESCAPE '\\'))
-             AND (SELECT COUNT(*) FROM card_topics ct
-                  WHERE ct.card_id = c.id AND ct.topic_id IN (SELECT value FROM json_each(?3)))
-                 = json_array_length(?3)
+             AND (json_array_length(?3) = 0 OR
+                  (SELECT COUNT(*) FROM card_topics ct
+                   WHERE ct.card_id = c.id AND ct.topic_id IN (SELECT value FROM json_each(?3)))
+                  >= CASE ?4 WHEN 'any' THEN 1 ELSE json_array_length(?3) END)
            ORDER BY COALESCE(c.name_kana, c.handle_name, c.name, ''), c.created_at`,
         )
-        .bind(userId, q ? likePattern(q) : null, JSON.stringify([...new Set(topicIds)]))
+        .bind(userId, q ? likePattern(q) : null, JSON.stringify([...new Set(topicIds)]), match)
         .all<CardRow>()
       return withIds(userId, results)
     },

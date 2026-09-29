@@ -1,4 +1,8 @@
-import type { DepartmentDao, DepartmentRecord } from 'backend/src/dao/department.interface.ts'
+import type {
+  DepartmentDao,
+  DepartmentListRecord,
+  DepartmentRecord,
+} from 'backend/src/dao/department.interface.ts'
 
 /** Removes affiliations that became identical after a merge re-pointed them. */
 export const dedupeAffiliations = (db: D1Database, userId: string) =>
@@ -21,9 +25,13 @@ export const createDepartmentDao = (db: D1Database): DepartmentDao => ({
   listByCompany: async (userId, companyId) =>
     (
       await db
-        .prepare('SELECT * FROM departments WHERE user_id = ? AND company_id = ? ORDER BY name')
+        .prepare(
+          `SELECT d.*,
+             (SELECT COUNT(*) FROM card_departments cd WHERE cd.department_id = d.id) AS card_count
+           FROM departments d WHERE d.user_id = ? AND d.company_id = ? ORDER BY d.name`,
+        )
         .bind(userId, companyId)
-        .all<DepartmentRecord>()
+        .all<DepartmentListRecord>()
     ).results,
   findById: (userId, id) =>
     db

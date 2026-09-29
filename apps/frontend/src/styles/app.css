@@ -1,0 +1,197 @@
+/* Layout and surfaces from the screen design (docs/spec/README.md). Colors come from the Vuetify
+   theme; this file only holds what Vuetify components don't cover. */
+
+/* The font itself (Noto Sans JP, self-hosted) is set in src/plugins/fonts.css. */
+:root {
+  --line: #e4e0d6;
+  --line-soft: #eeeae1;
+  --muted: #6b675f;
+  --faint: #a8a397;
+}
+
+html,
+body {
+  background: #e9e6df;
+}
+
+.v-application {
+  font-family: var(--v-font-body);
+  color: #1b1a17;
+  /* Outside the phone-width column on wide screens. */
+  background: #e9e6df !important;
+}
+
+/* The app is designed for a 390px phone; wider screens get the same column, centered. */
+.app-shell {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--v-theme-background));
+}
+
+/* Plain <button>s (camera controls, index rail, choices) start unstyled, like links. Vuetify's
+   buttons are left alone: its styles sit in a cascade layer, so an unlayered rule would win. */
+button:not(.v-btn) {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mono {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+}
+.muted {
+  color: var(--muted);
+}
+.faint {
+  color: var(--faint);
+}
+
+.page {
+  flex: 1;
+  padding: 8px 20px 24px;
+}
+/* Vuetify inputs grow along a flex column's main axis; in a page column they keep their height. */
+.page .v-input {
+  flex-grow: 0;
+}
+.page-title {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+/* A back / title / action bar at the top of sub-screens. */
+.top-bar {
+  height: 52px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--line);
+}
+.top-bar__title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.section-title {
+  margin: 18px 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+/* White rounded box holding rows of label + value. */
+.panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.panel-row {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.panel-row:last-child {
+  border-bottom: 0;
+}
+.row-label {
+  width: 76px;
+  flex: none;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Primary actions sit at the bottom, within thumb reach. */
+.bottom-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  gap: 10px;
+  padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
+  background: rgb(var(--v-theme-background));
+  border-top: 1px solid var(--line);
+}
+.main-action.v-btn {
+  height: 54px;
+  border-radius: 14px;
+  font-size: 16px;
+}
+
+/* Bottom sheets (filter, merge, same-person candidates). */
+.sheet {
+  background: rgb(var(--v-theme-background));
+  border-radius: 24px 24px 0 0;
+  padding: 10px 20px calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+.sheet::before {
+  content: '';
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  flex: none;
+  border-radius: 2px;
+  background: #d8d3c8;
+}
+.sheet__title {
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.4;
+}
+
+/* A choice card with a radio mark (merge target, overwrite / new). */
+.choice {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.choice--selected {
+  border: 1.5px solid #1b1a17;
+}
+.choice__mark {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--faint);
+}
+.choice--selected .choice__mark {
+  border: 6px solid #1b1a17;
+}
+
+/* The AI "needs review" note and badge. */
+.caution-note {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgb(var(--v-theme-caution-soft));
+  color: rgb(var(--v-theme-caution));
+  font-size: 12px;
+  line-height: 1.6;
+}

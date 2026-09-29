@@ -5,11 +5,16 @@ export interface DepartmentRecord {
   name: string
 }
 
+/** A listed department with how many cards refer to it. */
+export interface DepartmentListRecord extends DepartmentRecord {
+  card_count: number
+}
+
 export interface DepartmentDao {
   /** Ordered by name. */
   listByUser: (userId: string) => Promise<DepartmentRecord[]>
   /** Ordered by name. */
-  listByCompany: (userId: string, companyId: string) => Promise<DepartmentRecord[]>
+  listByCompany: (userId: string, companyId: string) => Promise<DepartmentListRecord[]>
   findById: (userId: string, id: string) => Promise<DepartmentRecord | null>
   findByName: (userId: string, companyId: string, name: string) => Promise<DepartmentRecord | null>
   insert: (record: DepartmentRecord) => Promise<void>

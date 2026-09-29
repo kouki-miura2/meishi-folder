@@ -5,6 +5,8 @@ export default defineConfig({
     '*': 'vp check --fix',
   },
   fmt: {
+    // Design exported from Claude Design as-is (see docs/spec/README.md); re-fetched, never hand-edited.
+    ignorePatterns: ['docs/spec/*.html'],
     semi: false,
     singleQuote: true,
     sortImports: true,

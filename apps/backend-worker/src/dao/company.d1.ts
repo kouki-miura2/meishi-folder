@@ -1,4 +1,8 @@
-import type { CompanyDao, CompanyRecord } from 'backend/src/dao/company.interface.ts'
+import type {
+  CompanyDao,
+  CompanyListRecord,
+  CompanyRecord,
+} from 'backend/src/dao/company.interface.ts'
 
 import { dedupeAffiliations } from './department.d1.ts'
 
@@ -12,9 +16,14 @@ export const createCompanyDao = (db: D1Database): CompanyDao => ({
   listByUser: async (userId) =>
     (
       await db
-        .prepare('SELECT * FROM companies WHERE user_id = ? ORDER BY name')
+        .prepare(
+          `SELECT co.*,
+             (SELECT COUNT(*) FROM cards c WHERE c.company_id = co.id) AS card_count,
+             (SELECT COUNT(*) FROM departments d WHERE d.company_id = co.id) AS department_count
+           FROM companies co WHERE co.user_id = ? ORDER BY co.name`,
+        )
         .bind(userId)
-        .all<CompanyRecord>()
+        .all<CompanyListRecord>()
     ).results,
   findById: (userId, id) =>
     db

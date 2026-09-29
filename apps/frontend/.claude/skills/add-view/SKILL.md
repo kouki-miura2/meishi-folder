@@ -12,8 +12,8 @@ table entry.
 
 Worked references:
 
-- `src/views/SampleView.vue` — a view with no server data, using a Pinia store directly.
-- `src/views/HomeView.vue` + `src/composables/useSampleQuery.ts` — a view backed by server data
+- `src/views/LoginView.vue` — a view with no server data, using a Pinia store (`auth`) directly.
+- `src/views/CardListView.vue` + `src/composables/useCards.ts` — a view backed by server data
   via TanStack Query, reacting to a query error through a Pinia store.
 - `src/router/routes.ts` / `src/router/routes.test.ts` — the route table and its test.
 
@@ -37,10 +37,10 @@ A view can need none, either, or both of the first two.
 - `src/composables/use<Name>Query.ts` — wraps `useQuery` (or `useMutation`), calling the Hono RPC
   `apiClient` from `src/api/client.ts`. Accept an optional `queryClient` param, passed through to
   `useQuery` as the second argument, purely so tests can run it outside a mounted app (see
-  `useSampleQuery.ts`).
+  `useCards.ts`).
 - `src/composables/use<Name>Query.test.ts` — co-located test: `vi.mock('../api/client.ts', ...)`,
   run the composable inside `effectScope().run(...)` with an explicit throwaway `QueryClient`
-  (`retry: false`), and await state with `vi.waitFor(...)` (see `useSampleQuery.test.ts`).
+  (`retry: false`), and await state with `vi.waitFor(...)` (see `useCards.test.ts`).
 
 ### 3. Create the view
 
@@ -56,14 +56,15 @@ A view can need none, either, or both of the first two.
   to `src/router/routes.ts`. Keep the component import lazy (arrow function), matching the
   existing entries.
 - Extend `src/router/routes.test.ts` with a case resolving the new path to the new route name
-  (see the existing `resolves the sample route` test). Use `router.resolve(...)`, not
+  (see the existing `resolves %s to the %s route` cases). Use `router.resolve(...)`, not
   `router.push(...)` — `push` actually loads the lazy component, which drags in Vuetify's CSS and
   breaks under Node's module loader.
 
 ### 5. Link it from navigation (if the view should be reachable from the UI)
 
-- Add a `<v-btn to="/<path>" text="..." />` (or equivalent) to `App.vue`'s app bar, alongside the
-  existing `Home`/`Sample` links.
+- Link it where the design puts the entry: a `router-link` / `:to` on the screen that leads to it,
+  or an item in `src/components/AccountMenu.vue` (the avatar menu on the card list). There is no
+  app-wide app bar.
 
 ### 6. Validate
 
@@ -83,5 +84,5 @@ DOM-free ceiling for what this view can be unit-tested with. To see the screen i
   `routes.test.ts`) — never a separate `test/` or `__tests__/` tree.
 - API request/response types come from `apps/backend`'s `AppType` via Hono RPC — never hand-write
   a DTO for the response a composable consumes.
-- `SampleView.vue` / `HomeView.vue` and their supporting files are reference implementations, not
-  fixed scaffolding to keep around forever — follow their shape, don't just import from them.
+- Screen ids in comments (1a–1m) refer to the design in `docs/spec/` (see `docs/spec/README.md`);
+  match the design there, and keep colors in the Vuetify theme (`src/plugins/vuetify.ts`), not inline.

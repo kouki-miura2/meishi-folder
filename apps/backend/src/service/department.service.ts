@@ -1,10 +1,15 @@
 import type { CompanyRepository } from '../repository/company.repository.ts'
-import type { Department, DepartmentRepository } from '../repository/department.repository.ts'
+import type {
+  Department,
+  DepartmentListItem,
+  DepartmentRepository,
+} from '../repository/department.repository.ts'
 import { ServiceError } from './errors.ts'
 import { cleanText } from './text.ts'
 
 export interface DepartmentService {
-  list: (userId: string, companyId: string) => Promise<Department[]>
+  /** With how many cards refer to each department. */
+  list: (userId: string, companyId: string) => Promise<DepartmentListItem[]>
   create: (userId: string, companyId: string, name: string) => Promise<Department>
   rename: (userId: string, id: string, name: string) => Promise<Department>
   /** Refuses while a card or the user's own affiliation still refers to it: merge it instead. */

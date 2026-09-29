@@ -131,3 +131,12 @@ test('delete removes the card and its links, only for the owner', async () => {
   ).first<{ n: number }>()
   expect(links?.n).toBe(0)
 })
+
+test('list with match any requires at least one requested topic', async () => {
+  const cards = await createCardDao(testEnv.env.DB).list('user-1', {
+    topicIds: ['t-2', 'missing'],
+    match: 'any',
+  })
+
+  expect(cards.map((c) => c.id)).toEqual(['handle'])
+})

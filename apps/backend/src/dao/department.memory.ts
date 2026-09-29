@@ -37,7 +37,10 @@ export const createDepartmentDao = (store: MemoryStore): DepartmentDao => {
       store.departments
         .filter((d) => d.user_id === userId && d.company_id === companyId)
         .sort(byName)
-        .map((d) => ({ ...d })),
+        .map((d) => ({
+          ...d,
+          card_count: store.cards.filter((card) => card.department_ids.includes(d.id)).length,
+        })),
     findById: async (userId, id) => {
       const department = find(userId, id)
       return department ? { ...department } : null

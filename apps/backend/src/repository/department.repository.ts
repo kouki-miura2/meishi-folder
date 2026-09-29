@@ -6,9 +6,13 @@ export interface Department {
   name: string
 }
 
+export interface DepartmentListItem extends Department {
+  cardCount: number
+}
+
 export interface DepartmentRepository {
   list: (userId: string) => Promise<Department[]>
-  listByCompany: (userId: string, companyId: string) => Promise<Department[]>
+  listByCompany: (userId: string, companyId: string) => Promise<DepartmentListItem[]>
   findById: (userId: string, id: string) => Promise<Department | null>
   findByName: (userId: string, companyId: string, name: string) => Promise<Department | null>
   create: (userId: string, department: Department) => Promise<void>
@@ -27,7 +31,10 @@ const toDepartment = (record: DepartmentRecord): Department => ({
 export const createDepartmentRepository = (dao: DepartmentDao): DepartmentRepository => ({
   list: async (userId) => (await dao.listByUser(userId)).map(toDepartment),
   listByCompany: async (userId, companyId) =>
-    (await dao.listByCompany(userId, companyId)).map(toDepartment),
+    (await dao.listByCompany(userId, companyId)).map((record) => ({
+      ...toDepartment(record),
+      cardCount: record.card_count,
+    })),
   findById: async (userId, id) => {
     const record = await dao.findById(userId, id)
     return record ? toDepartment(record) : null

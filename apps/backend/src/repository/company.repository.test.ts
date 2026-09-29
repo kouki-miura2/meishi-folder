@@ -20,13 +20,15 @@ const record: CompanyRecord = { id: 'c-1', user_id: 'user-1', name: 'Acme' }
 test('list, findById and findByName drop the owner column', async () => {
   const repository = createCompanyRepository(
     fakeDao({
-      listByUser: async () => [record],
+      listByUser: async () => [{ ...record, card_count: 3, department_count: 1 }],
       findById: async () => record,
       findByName: async () => record,
     }),
   )
 
-  await expect(repository.list('user-1')).resolves.toEqual([{ id: 'c-1', name: 'Acme' }])
+  await expect(repository.list('user-1')).resolves.toEqual([
+    { id: 'c-1', name: 'Acme', cardCount: 3, departmentCount: 1 },
+  ])
   await expect(repository.findById('user-1', 'c-1')).resolves.toEqual({ id: 'c-1', name: 'Acme' })
   await expect(repository.findByName('user-1', 'Acme')).resolves.toEqual({
     id: 'c-1',

@@ -4,9 +4,15 @@ export interface CompanyRecord {
   name: string
 }
 
+/** A listed company with how many cards and departments refer to it. */
+export interface CompanyListRecord extends CompanyRecord {
+  card_count: number
+  department_count: number
+}
+
 export interface CompanyDao {
   /** Ordered by name. */
-  listByUser: (userId: string) => Promise<CompanyRecord[]>
+  listByUser: (userId: string) => Promise<CompanyListRecord[]>
   findById: (userId: string, id: string) => Promise<CompanyRecord | null>
   findByName: (userId: string, name: string) => Promise<CompanyRecord | null>
   insert: (record: CompanyRecord) => Promise<void>

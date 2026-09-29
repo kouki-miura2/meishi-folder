@@ -7,13 +7,9 @@ import type { CardService, CardView } from './service/card.service.ts'
 import type { CompanyService } from './service/company.service.ts'
 import type { DepartmentService } from './service/department.service.ts'
 import { ServiceError } from './service/errors.ts'
-import type { SampleService } from './service/sample.service.ts'
 import type { TopicService } from './service/topic.service.ts'
 import type { UserService } from './service/user.service.ts'
 
-const sampleService: SampleService = {
-  getSample: async (id) => (id === '1' ? { id, message: 'Sample "First sample record"' } : null),
-}
 const allowAllGuard: AuthGuard = { authenticate: async () => ({ id: 'test-user' }) }
 const denyAllGuard: AuthGuard = { authenticate: async () => null }
 
@@ -50,7 +46,6 @@ const cardService: CardService = {
 /** An app whose services all throw unless a test overrides the ones it exercises. */
 const appWith = (overrides: Partial<AppDependencies> = {}) =>
   createApp({
-    sampleService,
     userService,
     companyService,
     departmentService,
@@ -67,44 +62,34 @@ const json = (method: string, body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 })
 
-test('GET /sample/:id returns the service response when the auth guard is disabled', async () => {
-  const app = appWith({ auth: { guard: denyAllGuard, enabled: false, excludePaths: [] } })
-
-  const res = await app.request('/sample/1')
-
-  expect(await res.json()).toEqual({ id: '1', message: 'Sample "First sample record"' })
-})
-
-test('GET /sample/:id returns 404 for an unknown id', async () => {
-  const app = appWith({ auth: { guard: denyAllGuard, enabled: false, excludePaths: [] } })
-
-  const res = await app.request('/sample/missing')
-
-  expect(res.status).toBe(404)
-})
+const topics = [{ id: 't-1', kind: 'project' as const, name: 'Apollo' }]
+const topicServiceReturningTopics: TopicService = { list: async () => topics }
 
 test('rejects unauthenticated requests once the auth guard is enabled', async () => {
   const app = appWith({ auth: { guard: denyAllGuard, enabled: true, excludePaths: [] } })
 
-  const res = await app.request('/sample/1')
+  const res = await app.request('/topics')
 
   expect(res.status).toBe(401)
 })
 
 test('allows authenticated requests once the auth guard is enabled', async () => {
-  const app = appWith()
+  const app = appWith({ topicService: topicServiceReturningTopics })
 
-  const res = await app.request('/sample/1', { headers: { authorization: 'token' } })
+  const res = await app.request('/topics', { headers: { authorization: 'token' } })
 
-  expect(await res.json()).toEqual({ id: '1', message: 'Sample "First sample record"' })
+  expect(await res.json()).toEqual(topics)
 })
 
-test('keeps excluded paths free access even when the auth guard is enabled', async () => {
-  const app = appWith({ auth: { guard: denyAllGuard, enabled: true, excludePaths: ['/sample/1'] } })
+test('skips the auth guard for excluded paths', async () => {
+  const authenticate = vi.fn(async () => null)
+  const app = appWith({
+    auth: { guard: { authenticate }, enabled: true, excludePaths: ['/topics'] },
+  })
 
-  const res = await app.request('/sample/1')
+  await app.request('/topics')
 
-  expect(await res.json()).toEqual({ id: '1', message: 'Sample "First sample record"' })
+  expect(authenticate).not.toHaveBeenCalled()
 })
 
 test('data routes answer 401 without a signed-in user, even with the auth guard disabled', async () => {
@@ -123,7 +108,7 @@ test('logs a matching started/completed pair, including for a rejected request',
   const info = vi.spyOn(console, 'info').mockImplementation(() => {})
   const app = appWith({ auth: { guard: denyAllGuard, enabled: true, excludePaths: [] } })
 
-  const res = await app.request('/sample/1')
+  const res = await app.request('/topics')
   expect(res.status).toBe(401)
 
   expect(info).toHaveBeenCalledTimes(2)
@@ -135,12 +120,12 @@ test('logs a matching started/completed pair, including for a rejected request',
   expect(started).toMatchObject({
     message: 'request started',
     method: 'GET',
-    path: '/sample/1',
+    path: '/topics',
   })
   expect(completed).toMatchObject({
     message: 'request completed',
     method: 'GET',
-    path: '/sample/1',
+    path: '/topics',
     user: 'anonymous',
     status: 401,
   })
@@ -213,7 +198,7 @@ test('PUT /me rejects a malformed body with 400 before reaching the service', as
 test('company routes map to the service with the right statuses', async () => {
   const company = { id: 'c-1', name: 'Acme' }
   const service: CompanyService = {
-    list: async () => [company],
+    list: async () => [{ ...company, cardCount: 2, departmentCount: 1 }],
     create: vi.fn(async () => company),
     rename: vi.fn(async () => company),
     remove: vi.fn(async () => {}),
@@ -221,7 +206,9 @@ test('company routes map to the service with the right statuses', async () => {
   }
   const app = appWith({ companyService: service })
 
-  expect(await (await app.request('/companies')).json()).toEqual([company])
+  expect(await (await app.request('/companies')).json()).toEqual([
+    { ...company, cardCount: 2, departmentCount: 1 },
+  ])
   expect((await app.request('/companies', json('POST', { name: 'Acme' }))).status).toBe(201)
   expect((await app.request('/companies/c-1', json('PATCH', { name: 'Acme' }))).status).toBe(200)
   expect((await app.request('/companies/c-1', { method: 'DELETE' })).status).toBe(204)
@@ -238,7 +225,7 @@ test('company routes map to the service with the right statuses', async () => {
 test('department routes map to the service with the right statuses', async () => {
   const department = { id: 'd-1', companyId: 'c-1', name: '営業部' }
   const service: DepartmentService = {
-    list: vi.fn(async () => [department]),
+    list: vi.fn(async () => [{ ...department, cardCount: 0 }]),
     create: vi.fn(async () => department),
     rename: vi.fn(async () => department),
     remove: vi.fn(async () => {}),
@@ -246,7 +233,9 @@ test('department routes map to the service with the right statuses', async () =>
   }
   const app = appWith({ departmentService: service })
 
-  expect(await (await app.request('/companies/c-1/departments')).json()).toEqual([department])
+  expect(await (await app.request('/companies/c-1/departments')).json()).toEqual([
+    { ...department, cardCount: 0 },
+  ])
   expect(
     (await app.request('/companies/c-1/departments', json('POST', { name: '営業部' }))).status,
   ).toBe(201)

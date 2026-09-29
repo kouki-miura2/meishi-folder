@@ -7,7 +7,11 @@ export const createCompanyDao = (store: MemoryStore): CompanyDao => ({
     store.companies
       .filter((c) => c.user_id === userId)
       .sort(byName)
-      .map((c) => ({ ...c })),
+      .map((c) => ({
+        ...c,
+        card_count: store.cards.filter((card) => card.company_id === c.id).length,
+        department_count: store.departments.filter((d) => d.company_id === c.id).length,
+      })),
   findById: async (userId, id) => {
     const company = store.companies.find((c) => c.user_id === userId && c.id === id)
     return company ? { ...company } : null

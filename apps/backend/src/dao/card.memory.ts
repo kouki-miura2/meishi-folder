@@ -34,12 +34,16 @@ export const createCardDao = (store: MemoryStore): CardDao => {
     )
 
   return {
-    list: async (userId, { q, topicIds = [] }) =>
+    list: async (userId, { q, topicIds = [], match = 'all' }) =>
       structuredClone(
         store.cards
           .filter((card) => card.user_id === userId)
           .filter((card) => !q || matches(card, q))
-          .filter((card) => topicIds.every((id) => card.topic_ids.includes(id)))
+          .filter(
+            (card) =>
+              topicIds.length === 0 ||
+              topicIds[match === 'any' ? 'some' : 'every']((id) => card.topic_ids.includes(id)),
+          )
           .sort((a, b) => compare(sortKey(a), sortKey(b)) || compare(a.created_at, b.created_at)),
       ),
     findById: async (userId, id) =>

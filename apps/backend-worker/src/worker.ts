@@ -1,12 +1,10 @@
 import { createApp } from 'backend/src/app.ts'
-import { createSampleDao } from 'backend/src/dao/sample.memory.ts'
 import { createGoogleAuthGuard } from 'backend/src/repository/auth-guard.google.ts'
 import { createCardExtractorRepository } from 'backend/src/repository/card-extractor.repository.ts'
 import { createCardImageRepository } from 'backend/src/repository/card-image.repository.ts'
 import { createCardRepository } from 'backend/src/repository/card.repository.ts'
 import { createCompanyRepository } from 'backend/src/repository/company.repository.ts'
 import { createDepartmentRepository } from 'backend/src/repository/department.repository.ts'
-import { createSampleRepository } from 'backend/src/repository/sample.repository.ts'
 import { createTopicRepository } from 'backend/src/repository/topic.repository.ts'
 import { createUserRepository } from 'backend/src/repository/user.repository.ts'
 import { createCardImageService } from 'backend/src/service/card-image.service.ts'
@@ -14,7 +12,6 @@ import { createCardService } from 'backend/src/service/card.service.ts'
 import { createCompanyService } from 'backend/src/service/company.service.ts'
 import { createDepartmentService } from 'backend/src/service/department.service.ts'
 import { createMasterResolver } from 'backend/src/service/master-resolver.ts'
-import { createSampleService } from 'backend/src/service/sample.service.ts'
 import { createTopicService } from 'backend/src/service/topic.service.ts'
 import { createUserService } from 'backend/src/service/user.service.ts'
 
@@ -46,7 +43,6 @@ const createWorkerApp = (env: WorkerEnv) => {
   })
 
   return createApp({
-    sampleService: createSampleService(createSampleRepository(createSampleDao())),
     userService: createUserService({
       userRepository,
       companyRepository,

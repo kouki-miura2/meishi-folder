@@ -2,20 +2,15 @@
 import { useNotificationStore } from './stores/notification.ts'
 
 const notification = useNotificationStore()
-const appTitle = import.meta.env.VITE_APP_TITLE
 </script>
 
 <template>
   <v-app>
-    <v-app-bar :title="appTitle">
-      <template #append>
-        <v-btn to="/" text="Home" />
-        <v-btn to="/sample" text="Sample" />
-      </template>
-    </v-app-bar>
-    <v-main>
+    <div class="app-shell">
       <router-view />
-    </v-main>
-    <v-snackbar v-model="notification.visible">{{ notification.message }}</v-snackbar>
+    </div>
+    <v-snackbar v-model="notification.visible" location="top" color="primary">
+      {{ notification.message }}
+    </v-snackbar>
   </v-app>
 </template>

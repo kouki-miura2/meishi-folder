@@ -32,7 +32,7 @@ export const fakeCompanyRepository = (companies: Company[] = []) => {
     companies,
     merges,
     referenced,
-    list: async () => [...companies],
+    list: async () => companies.map((c) => ({ ...c, cardCount: 0, departmentCount: 0 })),
     findById: async (_userId, id) => companies.find((c) => c.id === id) ?? null,
     findByName: async (_userId, name) => companies.find((c) => c.name === name) ?? null,
     create: async (_userId, company) => void companies.push(company),
@@ -60,7 +60,7 @@ export const fakeDepartmentRepository = (departments: Department[] = []) => {
     referenced,
     list: async () => [...departments],
     listByCompany: async (_userId, companyId) =>
-      departments.filter((d) => d.companyId === companyId),
+      departments.filter((d) => d.companyId === companyId).map((d) => ({ ...d, cardCount: 0 })),
     findById: async (_userId, id) => departments.find((d) => d.id === id) ?? null,
     findByName: async (_userId, companyId, name) =>
       departments.find((d) => d.companyId === companyId && d.name === name) ?? null,

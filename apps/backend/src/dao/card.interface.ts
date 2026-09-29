@@ -31,8 +31,9 @@ export interface CardRecord {
 export interface CardFilter {
   /** Case-insensitive substring match against every text field, master names included. */
   q?: string
-  /** Cards must carry every one of these topics. */
   topicIds?: string[]
+  /** `all` (default): cards must carry every one of `topicIds`; `any`: at least one of them. */
+  match?: 'any' | 'all'
 }
 
 export interface CardDao {

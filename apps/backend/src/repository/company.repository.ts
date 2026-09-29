@@ -5,8 +5,13 @@ export interface Company {
   name: string
 }
 
+export interface CompanyListItem extends Company {
+  cardCount: number
+  departmentCount: number
+}
+
 export interface CompanyRepository {
-  list: (userId: string) => Promise<Company[]>
+  list: (userId: string) => Promise<CompanyListItem[]>
   findById: (userId: string, id: string) => Promise<Company | null>
   findByName: (userId: string, name: string) => Promise<Company | null>
   create: (userId: string, company: Company) => Promise<void>
@@ -19,7 +24,12 @@ export interface CompanyRepository {
 const toCompany = (record: CompanyRecord): Company => ({ id: record.id, name: record.name })
 
 export const createCompanyRepository = (dao: CompanyDao): CompanyRepository => ({
-  list: async (userId) => (await dao.listByUser(userId)).map(toCompany),
+  list: async (userId) =>
+    (await dao.listByUser(userId)).map((record) => ({
+      ...toCompany(record),
+      cardCount: record.card_count,
+      departmentCount: record.department_count,
+    })),
   findById: async (userId, id) => {
     const record = await dao.findById(userId, id)
     return record ? toCompany(record) : null
