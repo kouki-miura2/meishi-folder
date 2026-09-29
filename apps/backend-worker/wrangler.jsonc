@@ -6,4 +6,26 @@
   "observability": {
     "enabled": true,
   },
+  // IDs are left out on purpose: `wrangler deploy` provisions the D1 database and R2 bucket on
+  // first deploy, and `wrangler dev` runs both locally.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "meishi-folder",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "IMAGES",
+      "bucket_name": "meishi-folder-images",
+    },
+  ],
+  // Workers AI has no local simulator: even `wrangler dev` calls the real (billed) service.
+  "ai": {
+    "binding": "AI",
+    "remote": true,
+  },
+  // GOOGLE_CLIENT_ID (the OAuth client id that Google ID tokens must be issued for) is supplied
+  // via `.dev.vars` locally and `wrangler secret put GOOGLE_CLIENT_ID` in production.
 }

@@ -1,0 +1,30 @@
+import type { CardRecord } from './card.interface.ts'
+
+/** Test-only: a minimal valid card row, overridden per test. */
+export const cardRecord = (overrides: Partial<CardRecord> = {}): CardRecord => ({
+  id: 'card-1',
+  user_id: 'user-1',
+  name: null,
+  name_kana: null,
+  name_romaji: null,
+  company_id: null,
+  titles: '[]',
+  job_types: '[]',
+  mobile: null,
+  emails: '[]',
+  other_contacts: '[]',
+  url: null,
+  offices: '[]',
+  met_on: null,
+  met_at: null,
+  met_occasion: null,
+  handle_name: null,
+  front_image_id: null,
+  back_image_id: null,
+  visibility: 'private',
+  created_at: '2026-01-01T00:00:00.000Z',
+  updated_at: '2026-01-01T00:00:00.000Z',
+  department_ids: [],
+  topic_ids: [],
+  ...overrides,
+})

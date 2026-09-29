@@ -1,0 +1,40 @@
+import { expect, test } from 'vite-plus/test'
+
+import { createMemoryStore } from './memory-store.ts'
+import type { UserRecord } from './user.interface.ts'
+import { createUserDao } from './user.memory.ts'
+
+const user: UserRecord = {
+  id: 'user-1',
+  name: '山田 太郎',
+  name_kana: null,
+  created_at: '2026-01-01T00:00:00.000Z',
+  updated_at: '2026-01-01T00:00:00.000Z',
+  affiliations: [{ company_id: 'company-1', department_id: null }],
+}
+
+test('save inserts a user that findById then resolves', async () => {
+  const dao = createUserDao(createMemoryStore())
+
+  await dao.save(user)
+
+  await expect(dao.findById('user-1')).resolves.toEqual(user)
+})
+
+test('save replaces an existing user', async () => {
+  const dao = createUserDao(createMemoryStore())
+  await dao.save(user)
+
+  await dao.save({ ...user, name: '山田 花子', affiliations: [] })
+
+  await expect(dao.findById('user-1')).resolves.toMatchObject({
+    name: '山田 花子',
+    affiliations: [],
+  })
+})
+
+test('findById resolves null for an unknown user', async () => {
+  const dao = createUserDao(createMemoryStore())
+
+  await expect(dao.findById('missing')).resolves.toBeNull()
+})
