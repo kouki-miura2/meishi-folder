@@ -107,7 +107,7 @@ test('update keeps omitted fields and clears fields sent as null', async () => {
   const { service } = setup()
   const { id } = await service.create('user-1', registered)
 
-  const view = await service.update('user-1', id, { metAt: null, visibility: 'company' })
+  const view = await service.update('user-1', id, { metAt: null, visibility: 'private' })
 
   expect(view).toMatchObject({
     name: '山田 太郎',
@@ -115,9 +115,22 @@ test('update keeps omitted fields and clears fields sent as null', async () => {
     departments: [{ name: '営業部' }],
     projects: [{ name: 'Apollo' }],
     metAt: null,
-    visibility: 'company',
+    visibility: 'private',
   })
 })
+
+test.each(['company', 'department'] as const)(
+  'update rejects %s visibility until mutual authentication exists',
+  async (visibility) => {
+    const { service } = setup()
+    const { id } = await service.create('user-1', registered)
+
+    await expect(service.update('user-1', id, { visibility })).rejects.toMatchObject({
+      code: 'invalid',
+    })
+    await expect(service.get('user-1', id)).resolves.toMatchObject({ visibility: 'private' })
+  },
+)
 
 test('update with a new scan replaces printed items and photos but keeps scene and notes', async () => {
   const { service, cardImageRepository } = setup()

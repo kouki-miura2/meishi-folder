@@ -286,11 +286,9 @@ test('POST /images uploads the file and GET /images/:id serves it back', async (
 
   expect(uploaded.status).toBe(201)
   expect(await uploaded.json()).toEqual({ id: 'img-1' })
-  expect(upload).toHaveBeenCalledWith('test-user', {
-    body: expect.any(ArrayBuffer),
-    contentType: 'image/png',
-  })
+  expect(upload).toHaveBeenCalledWith('test-user', expect.any(ArrayBuffer))
   expect(served.headers.get('content-type')).toBe('image/png')
+  expect(served.headers.get('x-content-type-options')).toBe('nosniff')
   expect(new Uint8Array(await served.arrayBuffer())).toEqual(bytes)
 })
 
@@ -300,6 +298,27 @@ test('POST /images rejects a request without a file', async () => {
   const res = await app.request('/images', { method: 'POST', body: new FormData() })
 
   expect(res.status).toBe(400)
+})
+
+test('requests with a body over 10MB are rejected with 413 before reaching the service', async () => {
+  const upload = vi.fn(async () => ({ id: 'img-1' }))
+  const app = appWith({ cardImageService: { upload, get: vi.fn() } })
+  const form = new FormData()
+  form.append('file', new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'card.png'))
+
+  const res = await app.request('/images', { method: 'POST', body: form })
+
+  expect(res.status).toBe(413)
+  expect(await res.json()).toEqual({ error: 'Payload Too Large' })
+  expect(upload).not.toHaveBeenCalled()
+})
+
+test('responses carry no CORS headers (frontend and API share one origin)', async () => {
+  const app = appWith()
+
+  const res = await app.request('/topics', { headers: { Origin: 'https://evil.example' } })
+
+  expect(res.headers.get('access-control-allow-origin')).toBeNull()
 })
 
 test('card routes map to the service with the right statuses', async () => {

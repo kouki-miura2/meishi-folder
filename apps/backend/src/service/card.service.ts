@@ -343,6 +343,11 @@ export const createCardService = ({
       return (await loadMasters(userId)).toView(card)
     },
     update: async (userId, id, input) => {
+      // "company" / "department" share a card with mutually authenticated organizations, which
+      // doesn't exist yet — until then a card can't be made visible beyond its owner.
+      if (input.visibility !== undefined && input.visibility !== 'private') {
+        throw new ServiceError('invalid', `Visibility ${input.visibility} is not available yet`)
+      }
       const base = await findOrThrow(userId, id)
       const card = await apply(userId, base, input)
       card.updatedAt = new Date().toISOString()

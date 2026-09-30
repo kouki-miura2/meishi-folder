@@ -1,0 +1,12 @@
+# Response headers for the static assets (Cloudflare Workers static assets reads this file).
+# Only asset responses get these; /api/* is answered by the Worker instead.
+#
+# CSP is report-only until Google sign-in (incl. auto sign-in), the camera and card photos are
+# confirmed working in production; then rename it to Content-Security-Policy.
+# Clickjacking is already blocked by X-Frame-Options (report-only ignores frame-ancestors).
+/*
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; frame-src https://accounts.google.com/gsi/; connect-src 'self' https://accounts.google.com/gsi/; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' blob: data: https://*.googleusercontent.com; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=(), geolocation=()

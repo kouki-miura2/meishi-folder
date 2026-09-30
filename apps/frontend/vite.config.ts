@@ -11,6 +11,9 @@ export default defineConfig({
     clearMocks: false,
   },
   plugins: [vue(), vuetify({ autoImport: true })],
+  optimizeDeps: {
+    exclude: ['vuetify'],
+  },
   // Same origin as in production: /api goes to the backend Worker (`vp run backend-worker#dev`).
   server: { proxy: { '/api': 'http://localhost:8787' } },
   lint: {

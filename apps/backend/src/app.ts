@@ -1,6 +1,6 @@
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
-import { cors } from 'hono/cors'
+import { bodyLimit } from 'hono/body-limit'
 import { HTTPException } from 'hono/http-exception'
 import { createLogger } from 'utils'
 import { z } from 'zod'
@@ -59,6 +59,8 @@ const userIdOf = (c: Context<{ Variables: Variables }>): string => {
   return id
 }
 
+const MAX_BODY_BYTES = 10 * 1024 * 1024
+
 const text = z.string().max(1000)
 const optionalText = text.nullish()
 const texts = z.array(text).max(50).optional()
@@ -104,7 +106,6 @@ export const createApp = (deps: AppDependencies) => {
 
   return (
     new Hono<{ Variables: Variables }>()
-      .use('*', cors())
       // Audit trail: start/end pair per request, joined by requestId (needed since concurrent
       // requests to the same method+path would otherwise be indistinguishable in the log stream).
       // Wraps the auth guard so a rejected (401) request is still logged, not just successful ones.
@@ -138,6 +139,15 @@ export const createApp = (deps: AppDependencies) => {
         }
         await next()
       })
+      // Photos are 5MB at most (checked in the service); anything past 10MB is rejected before
+      // it is read into memory.
+      .use(
+        '*',
+        bodyLimit({
+          maxSize: MAX_BODY_BYTES,
+          onError: (c) => c.json({ error: 'Payload Too Large' }, 413),
+        }),
+      )
       .onError((error, c) => {
         if (error instanceof ServiceError) {
           return c.json({ error: error.message }, statusOf[error.code])
@@ -245,10 +255,7 @@ export const createApp = (deps: AppDependencies) => {
       .post('/images', zValidator('form', z.object({ file: z.instanceof(File) })), async (c) => {
         const { file } = c.req.valid('form')
         return c.json(
-          await deps.cardImageService.upload(userIdOf(c), {
-            body: await file.arrayBuffer(),
-            contentType: file.type,
-          }),
+          await deps.cardImageService.upload(userIdOf(c), await file.arrayBuffer()),
           201,
         )
       })
@@ -257,6 +264,7 @@ export const createApp = (deps: AppDependencies) => {
         // An image id is never reused for different content, so the browser may keep it.
         return c.body(image.body, 200, {
           'Content-Type': image.contentType,
+          'X-Content-Type-Options': 'nosniff',
           'Cache-Control': 'private, max-age=31536000, immutable',
         })
       })
