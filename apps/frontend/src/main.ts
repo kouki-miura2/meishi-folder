@@ -4,6 +4,7 @@ import { createApp } from 'vue'
 
 import { configureApiClient } from './api/client.ts'
 import App from './App.vue'
+import { listenForInstallPrompt } from './composables/useInstallApp.ts'
 import { queryClient } from './plugins/query.ts'
 import { vuetify } from './plugins/vuetify.ts'
 import { router } from './router/index.ts'
@@ -25,5 +26,7 @@ configureApiClient({
     }
   },
 })
+
+listenForInstallPrompt()
 
 app.use(router).use(vuetify).use(VueQueryPlugin, { queryClient }).mount('#app')

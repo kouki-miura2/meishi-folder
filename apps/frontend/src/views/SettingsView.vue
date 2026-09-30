@@ -4,17 +4,20 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useExportCardsMutation } from '../composables/useCards.ts'
+import { useInstallApp } from '../composables/useInstallApp.ts'
 import { useDeleteMeMutation } from '../composables/useMe.ts'
 import { useSignOut } from '../composables/useSignOut.ts'
 import { saveFile } from '../lib/download.ts'
 import { useAuthStore } from '../stores/auth.ts'
 
-// Settings (not in the design): profile and masters, the CSV export, outside pages, withdrawal.
+// Settings (not in the design): profile and masters, the CSV export, installing the app, outside
+// pages, withdrawal.
 const auth = useAuthStore()
 const router = useRouter()
 const exportCards = useExportCardsMutation()
 const deleteMe = useDeleteMeMutation()
 const signOut = useSignOut()
+const install = useInstallApp()
 
 // Pages still to be written: a row stays disabled until its url is set.
 const links: { title: string; url: string | null }[] = [
@@ -24,6 +27,13 @@ const links: { title: string; url: string | null }[] = [
 ]
 
 const withdrawing = ref(false)
+const showingInstallSteps = ref(false)
+
+// Installs directly where the browser can; iOS can't from a script, so it gets the steps instead.
+const installApp = () => {
+  if (install.mode.value === 'prompt') void install.prompt()
+  else showingInstallSteps.value = true
+}
 
 const download = async () => {
   const csv = await exportCards.mutateAsync()
@@ -90,6 +100,16 @@ const withdraw = async () => {
       </v-list-item>
     </v-list>
 
+    <!-- Only in the browser: hidden once opened from the home screen. -->
+    <v-list v-if="install.mode.value" class="panel py-0 mb-4">
+      <v-list-item
+        prepend-icon="mdi-cellphone-arrow-down"
+        title="アプリをインストール"
+        subtitle="ホーム画面から全画面で開けます"
+        @click="installApp"
+      />
+    </v-list>
+
     <v-list class="panel py-0">
       <template v-for="link in links" :key="link.title">
         <v-list-item
@@ -110,6 +130,22 @@ const withdraw = async () => {
       />
     </v-list>
   </div>
+
+  <v-dialog v-model="showingInstallSteps" max-width="360">
+    <v-card title="ホーム画面に追加する">
+      <v-card-text>
+        {{ install.mode.value === 'ios-safari' ? 'Safari' : 'ブラウザ' }} の共有ボタン（<v-icon
+          icon="mdi-export-variant"
+          size="small"
+          aria-label="共有"
+        />）をタップし、「ホーム画面に追加」を選んでください。「Webアプリとして開く」はオンのままにします。
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="text" @click="showingInstallSteps = false">閉じる</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 
   <v-dialog v-model="withdrawing" max-width="360">
     <v-card title="退会しますか？">

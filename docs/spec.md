@@ -25,6 +25,7 @@
 ### 提供形態
 
 - Webアプリ（SPA）として提供する。主な利用環境はスマホのブラウザとする。PC のブラウザでも使える。
+- スマホのホーム画面に追加でき、ホーム画面から開くとアドレスバーのない画面で起動する（PWA）。
 - 公開範囲（PoC・一般公開など）と収益化の方針（未定）。
 - 日本向けのサービスとする。日付の判定と日時の表示は日本時間（JST、UTC+9）とする（コード上は `packages/utils/src/date/zone.ts` の `TIME_ZONE_OFFSET_MINUTES`）。
 
@@ -362,6 +363,10 @@
 
 - プロフィール・所属（ようこそ画面を開く）、会社・団体の設定。
 - 名刺データのダウンロード（「各論 > CSV 出力」参照）。
+- アプリをインストール: ブラウザで開いているときだけ表示する（ホーム画面から開いたときは表示しない）。
+  - 直接インストールできるブラウザ（Android の Chrome など）は、ブラウザのインストール確認を表示する。
+  - iOS はスクリプトからインストールできないため、共有ボタンから「ホーム画面に追加」を選ぶ手順をダイアログで表示する。
+  - どちらにも当てはまらないブラウザでは表示しない。
 - ヘルプ、利用規約、プライバシーポリシー: 外部ページ（新しいタブ）で開く。ページができるまでは無効表示。
 - 退会する（「各論 > 退会」参照）。
 
@@ -441,16 +446,10 @@
   - ファイルストレージ: Cloudflare R2（名刺写真）
   - AI 抽出: Workers AI（「各論 > AI 抽出」参照）
 - frontend
-  - Vue3 + Vuetify4 + vue-router + TanStack Query + Pinia の Webアプリ（SPA、`apps/frontend`）。PWA にはしない。
-  - 画面デザイン
-    - Claude Design で作成: https://claude.ai/artifact/QRofMAZDkyMytHHhwciqRq
-    - 画面 ID（1a〜1m）はこのデザインの番号。画面は実装済みで、今の見た目の基準は実装（色は `apps/frontend/src/plugins/vuetify.ts` のテーマ）。
-    - スマホ（幅 390px）が基準。PC では同じレイアウトを中央寄せ（最大幅 480px）で表示する。
-    - 色はデザインどおり（紙のオフホワイト・墨色、意味色はプロジェクト＝赤・グループ＝青・AI 要確認＝黄の 3 つだけ）。
-    - フォント: 本文は Noto Sans JP（デザインの Zen Kaku Gothic New は使わない）、数字・英字（日付・件数・メール等）は IBM Plex Mono。
+  - Vue3 + Vuetify4 + vue-router + TanStack Query + Pinia の Webアプリ（SPA・PWA、`apps/frontend`）。
+  - PWA は Web App Manifest（`public/manifest.webmanifest`）とアイコン（`public/icons/`、元の図案は `icon.svg`）だけで、Service Worker は持たない（API なしでは使えないため、オフライン用のキャッシュを持たない）。
 - 配信
   - 画面と API を 1 つの Cloudflare Worker から同じオリジンで配信する。画面は `/`（存在しないパスは SPA の `index.html`）、API は `/api` 配下。
-  - https://meishi-folder.miu-soft.workers.dev
 - 認証
   - Google でログインする。パスワードを預からず、ユーザーの多くが持つアカウントで始められるため。
   - フロントエンドが Google Identity Services で ID トークン（JWT）を取得し、`Authorization: Bearer <token>` で API に送る。独自のセッションは持たない。

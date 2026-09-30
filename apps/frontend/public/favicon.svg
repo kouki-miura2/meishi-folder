@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Favicon: the app icon simplified so it reads at 16px. -->
+  <rect width="32" height="32" rx="7" fill="#1B1A17"/>
+  <rect x="5" y="9" width="22" height="14" rx="2" fill="#F5F3EE"/>
+  <rect x="8" y="12" width="10" height="2.5" rx="1.25" fill="#1B1A17"/>
+  <rect x="8" y="17.5" width="5" height="2.5" rx="1.25" fill="#B3372B"/>
+  <rect x="14" y="17.5" width="5" height="2.5" rx="1.25" fill="#2456A6"/>
+</svg>
