@@ -26,7 +26,9 @@ beforeEach(async () => {
   await topics.insert({ id: 't-1', user_id: 'user-1', kind: 'project', name: 'Apollo' })
   await topics.insert({ id: 't-2', user_id: 'user-1', kind: 'group', name: 'Book club' })
   const dao = createCardDao(DB)
-  await dao.insert(cardRecord({ id: 'kana', name: '山田 太郎', name_kana: 'ヤマダ タロウ' }))
+  await dao.insert(
+    cardRecord({ id: 'kana', name: '山田 太郎', name_kana: 'ヤマダ タロウ', memo: 'Demo day' }),
+  )
   await dao.insert(
     cardRecord({
       id: 'handle',
@@ -76,6 +78,7 @@ test('list filters by text across columns and master names, case-insensitively',
   await expect(ids('acme')).resolves.toEqual(['handle'])
   await expect(ids('research_lab')).resolves.toEqual(['handle'])
   await expect(ids('book')).resolves.toEqual(['handle'])
+  await expect(ids('demo')).resolves.toEqual(['kana'])
 })
 
 test('list treats LIKE wildcards in the query literally', async () => {

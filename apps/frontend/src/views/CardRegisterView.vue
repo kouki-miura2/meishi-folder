@@ -28,7 +28,7 @@ import {
   toOverwriteInput,
   validateCardForm,
 } from '../domain/card-form.ts'
-import { resizeImage } from '../lib/image.ts'
+import { resizeImage, rotateImage } from '../lib/image.ts'
 import { useNotificationStore } from '../stores/notification.ts'
 
 // 1d–1g in one screen: capture → upload and AI extraction → confirm and correct → (same-person
@@ -43,7 +43,10 @@ const update = useUpdateCardMutation()
 
 const step = ref<'capture' | 'extracting' | 'confirm'>('capture')
 const progress = ref(0)
+// The photos as taken (front, then back if any), and their object URLs for the thumbnails.
+let photos: Blob[] = []
 const previews = ref<string[]>([])
+const rotating = ref(false)
 const form = ref<CardForm>(emptyCardForm())
 const review = ref(new Set<ReviewField>())
 const extractedCount = ref<number | null>(null)
@@ -56,11 +59,24 @@ let skipped = false
 const today = () => formatDate(new Date())
 const errors = computed(() => validateCardForm(form.value))
 
-const setPreviews = (photos: Blob[]) => {
+const setPhotos = (next: Blob[]) => {
+  photos = next
   previews.value.forEach((url) => URL.revokeObjectURL(url))
-  previews.value = photos.map((photo) => URL.createObjectURL(photo))
+  previews.value = next.map((photo) => URL.createObjectURL(photo))
 }
-onBeforeUnmount(() => setPreviews([]))
+onBeforeUnmount(() => setPhotos([]))
+
+const uploadPhotos = async ([front, back]: Blob[]): Promise<CardImages> => {
+  const [frontFile, backFile] = await Promise.all([
+    front ? resizeImage(front, 'front.jpg') : null,
+    back ? resizeImage(back, 'back.jpg') : null,
+  ])
+  const [frontImage, backImage] = await Promise.all([
+    frontFile ? upload.mutateAsync(frontFile) : null,
+    backFile ? upload.mutateAsync(backFile) : null,
+  ])
+  return { frontImageId: frontImage?.id ?? null, backImageId: backImage?.id ?? null }
+}
 
 const toConfirm = (next: CardForm, reviewFields = new Set<ReviewField>()) => {
   form.value = next
@@ -69,22 +85,12 @@ const toConfirm = (next: CardForm, reviewFields = new Set<ReviewField>()) => {
 }
 
 const start = async (front: Blob, back: Blob | null) => {
-  setPreviews(back ? [front, back] : [front])
+  setPhotos(back ? [front, back] : [front])
   step.value = 'extracting'
   progress.value = 0
   skipped = false
   extractedCount.value = null
-  uploads = (async () => {
-    const [frontFile, backFile] = await Promise.all([
-      resizeImage(front, 'front.jpg'),
-      back ? resizeImage(back, 'back.jpg') : null,
-    ])
-    const [frontImage, backImage] = await Promise.all([
-      upload.mutateAsync(frontFile),
-      backFile ? upload.mutateAsync(backFile) : null,
-    ])
-    return { frontImageId: frontImage.id, backImageId: backImage?.id ?? null }
-  })()
+  uploads = uploadPhotos(photos)
 
   let images: CardImages
   try {
@@ -122,6 +128,19 @@ const start = async (front: Blob, back: Blob | null) => {
 const skip = () => {
   skipped = true
   toConfirm({ ...emptyCardForm(), metOn: today() })
+}
+
+// A shot taken at the wrong angle is turned 90° clockwise and uploaded again; saving waits for it.
+const rotate = async (index: number) => {
+  const photo = photos[index]
+  if (!photo) return
+  rotating.value = true
+  try {
+    setPhotos(photos.with(index, await rotateImage(photo)))
+    uploads = uploadPhotos(photos)
+  } finally {
+    rotating.value = false
+  }
 }
 
 const images = async (): Promise<CardImages> => {
@@ -184,14 +203,20 @@ const choose = async (choice: CandidateChoice) => {
     </div>
     <div class="page">
       <div class="thumbs">
-        <img
-          v-for="(url, i) in previews"
-          :key="url"
-          :src="url"
-          :alt="i === 0 ? '表' : '裏'"
-          class="thumb"
-        />
+        <div v-for="(url, i) in previews" :key="url" class="thumb">
+          <img :src="url" :alt="i === 0 ? '表' : '裏'" />
+          <v-btn
+            icon="mdi-rotate-right"
+            size="x-small"
+            color="primary"
+            class="thumb__rotate"
+            :aria-label="`${i === 0 ? '表' : '裏'}を右に90°回転`"
+            :disabled="rotating"
+            @click="rotate(i)"
+          />
+        </div>
       </div>
+      <div class="faint text-caption mt-1">写真の向きが違うときは ↻ で右に90°回転できます</div>
       <div v-if="extractedCount !== null" class="caution-note mt-3">
         <b>AIが{{ extractedCount }}項目を抽出しました。</b>
         <template v-if="review.size"
@@ -210,7 +235,7 @@ const choose = async (choice: CandidateChoice) => {
       </v-alert>
       <CardFormFields
         v-model="form"
-        :sections="['printed', 'scene']"
+        :sections="['printed', 'scene', 'memo']"
         :review="review"
         show-master-status
       />
@@ -219,7 +244,7 @@ const choose = async (choice: CandidateChoice) => {
       <v-btn
         color="primary"
         class="main-action flex-grow-1"
-        :disabled="errors.length > 0"
+        :disabled="errors.length > 0 || rotating"
         :loading="saving"
         @click="save"
       >
@@ -250,9 +275,20 @@ const choose = async (choice: CandidateChoice) => {
   padding-top: 14px;
 }
 .thumb {
-  width: 120px;
-  height: 73px;
-  object-fit: cover;
+  position: relative;
+  max-width: calc(50% - 5px);
+}
+.thumb__rotate {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+}
+.thumb img {
+  /* Width follows the photo, so a portrait card shows whole instead of cropped. */
+  display: block;
+  height: 100px;
+  max-width: 100%;
+  object-fit: contain;
   background: #fff;
   border: 1px solid #d8d3c8;
   border-radius: 4px;

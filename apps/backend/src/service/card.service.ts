@@ -41,6 +41,7 @@ export interface CardInput {
   metAt?: string | null
   metOccasion?: string | null
   handleName?: string | null
+  memo?: string | null
   projectNames?: string[]
   groupNames?: string[]
   frontImageId?: string | null
@@ -78,6 +79,7 @@ export interface CardView {
   metAt: string | null
   metOccasion: string | null
   handleName: string | null
+  memo: string | null
   projects: MasterRef[]
   groups: MasterRef[]
   frontImageId: string | null
@@ -149,6 +151,7 @@ const emptyCard = (id: string, now: string): Card => ({
   metAt: null,
   metOccasion: null,
   handleName: null,
+  memo: null,
   topicIds: [],
   frontImageId: null,
   backImageId: null,
@@ -274,6 +277,7 @@ export const createCardService = ({
       metAt: text(input.metAt, base.metAt),
       metOccasion: text(input.metOccasion, base.metOccasion),
       handleName: text(input.handleName, base.handleName),
+      memo: text(input.memo, base.memo),
       topicIds: [
         ...(await topicIds('project', input.projectNames)),
         ...(await topicIds('group', input.groupNames)),

@@ -83,7 +83,7 @@ const submit = async () => {
 
     <div>
       <div class="section-title mt-0">所属</div>
-      <div class="d-flex flex-column ga-2">
+      <div class="d-flex flex-column ga-4">
         <AffiliationFields
           v-for="(_, index) in affiliations"
           :key="index"

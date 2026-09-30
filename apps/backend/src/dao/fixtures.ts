@@ -19,6 +19,7 @@ export const cardRecord = (overrides: Partial<CardRecord> = {}): CardRecord => (
   met_at: null,
   met_occasion: null,
   handle_name: null,
+  memo: null,
   front_image_id: null,
   back_image_id: null,
   visibility: 'private',

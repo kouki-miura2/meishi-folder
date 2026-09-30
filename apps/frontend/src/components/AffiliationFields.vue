@@ -26,39 +26,27 @@ const departmentNames = computed(() =>
 </script>
 
 <template>
-  <div class="panel affiliation">
-    <v-combobox
-      :model-value="model.companyName"
-      :items="companies.map((c) => c.name)"
-      label="会社・団体"
-      variant="plain"
-      bg-color="transparent"
-      @update:model-value="model = { ...model, companyName: $event ?? '' }"
-    >
-      <template #append>
-        <v-btn
-          icon="mdi-close"
-          variant="text"
-          size="small"
-          aria-label="所属を削除"
-          @click="$emit('remove')"
-        />
-      </template>
-    </v-combobox>
-    <v-divider />
-    <v-combobox
-      :model-value="model.departmentName"
-      :items="departmentNames"
-      label="部署"
-      variant="plain"
-      bg-color="transparent"
-      @update:model-value="model = { ...model, departmentName: $event ?? '' }"
+  <div class="d-flex align-center ga-1">
+    <div class="d-flex flex-column ga-2 flex-grow-1">
+      <v-combobox
+        :model-value="model.companyName"
+        :items="companies.map((c) => c.name)"
+        label="会社・団体"
+        @update:model-value="model = { ...model, companyName: $event ?? '' }"
+      />
+      <v-combobox
+        :model-value="model.departmentName"
+        :items="departmentNames"
+        label="部署"
+        @update:model-value="model = { ...model, departmentName: $event ?? '' }"
+      />
+    </div>
+    <v-btn
+      icon="mdi-close"
+      variant="text"
+      size="small"
+      aria-label="所属を削除"
+      @click="$emit('remove')"
     />
   </div>
 </template>
-
-<style scoped>
-.affiliation {
-  padding: 0 4px 0 14px;
-}
-</style>

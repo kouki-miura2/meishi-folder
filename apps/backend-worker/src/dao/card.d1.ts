@@ -20,6 +20,7 @@ const COLUMNS = [
   'met_at',
   'met_occasion',
   'handle_name',
+  'memo',
   'front_image_id',
   'back_image_id',
   'visibility',
@@ -43,6 +44,7 @@ const SEARCHED = [
   'met_at',
   'met_occasion',
   'handle_name',
+  'memo',
 ] as const satisfies (keyof CardRow)[]
 
 const likePattern = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`

@@ -163,7 +163,6 @@ const scrollTo = (label: string) =>
   <div class="fab-area">
     <v-btn
       color="primary"
-      size="x-large"
       rounded="pill"
       class="fab"
       prepend-icon="mdi-camera-outline"
@@ -189,10 +188,12 @@ const scrollTo = (label: string) =>
   padding: 16px 20px 12px;
 }
 .list-header .page-title {
-  font-size: 30px;
+  font-size: 20px;
+  line-height: 1.3;
 }
 .count {
   font-size: 12px;
+  line-height: 1.4;
 }
 .search {
   display: flex;
@@ -317,7 +318,11 @@ const scrollTo = (label: string) =>
 }
 .fab {
   pointer-events: auto;
-  height: 56px !important;
+  height: 40px !important;
   box-shadow: 0 8px 20px rgba(27, 26, 23, 0.35);
+}
+/* Noto Sans JP sits a little below the line box's center, so the icon moves down to meet it. */
+.fab :deep(.v-btn__prepend) {
+  transform: translateY(1px);
 }
 </style>

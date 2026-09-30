@@ -27,6 +27,7 @@ export interface Card {
   metAt: string | null
   metOccasion: string | null
   handleName: string | null
+  memo: string | null
   topicIds: string[]
   frontImageId: string | null
   backImageId: string | null
@@ -62,6 +63,7 @@ const toCard = (record: CardRecord): Card => ({
   metAt: record.met_at,
   metOccasion: record.met_occasion,
   handleName: record.handle_name,
+  memo: record.memo,
   topicIds: record.topic_ids,
   frontImageId: record.front_image_id,
   backImageId: record.back_image_id,
@@ -89,6 +91,7 @@ const toRecord = (userId: string, card: Card): CardRecord => ({
   met_at: card.metAt,
   met_occasion: card.metOccasion,
   handle_name: card.handleName,
+  memo: card.memo,
   topic_ids: card.topicIds,
   front_image_id: card.frontImageId,
   back_image_id: card.backImageId,

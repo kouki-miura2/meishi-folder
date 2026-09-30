@@ -58,6 +58,7 @@ export const vuetify = createVuetify({
       hideDetails: 'auto',
     },
     VChip: { rounded: 'pill', variant: 'tonal', class: 'font-weight-bold' },
-    VBtnToggle: { rounded: 'lg', density: 'comfortable' },
+    // The group rounds its outer corners; square buttons inside keep it one connected bar.
+    VBtnToggle: { rounded: 'lg', density: 'comfortable', VBtn: { rounded: 0 } },
   },
 })

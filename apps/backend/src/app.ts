@@ -91,6 +91,7 @@ const cardFields = {
   metAt: optionalText,
   metOccasion: optionalText,
   handleName: optionalText,
+  memo: optionalText,
   projectNames: texts,
   groupNames: texts,
   frontImageId: z.string().nullish(),

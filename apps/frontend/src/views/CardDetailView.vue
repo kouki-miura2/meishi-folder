@@ -94,7 +94,7 @@ const visibilityLabel = { private: '個人', company: '会社', department: '部
 
     <div class="px-5 pt-3">
       <h1 class="detail__name">{{ card.name ?? card.handleName ?? card.nameKana }}</h1>
-      <div class="muted text-caption">
+      <div class="detail__kana muted">
         {{ [card.nameKana, card.nameRomaji].filter(Boolean).join(' ・ ') }}
       </div>
       <div v-if="card.company" class="mt-2">
@@ -182,6 +182,10 @@ const visibilityLabel = { private: '個人', company: '会社', department: '部
       <div v-if="card.handleName" class="panel">
         <div class="panel-row">{{ card.handleName }}</div>
       </div>
+      <div v-if="card.memo" class="section-title">メモ</div>
+      <div v-if="card.memo" class="panel">
+        <div class="panel-row memo">{{ card.memo }}</div>
+      </div>
 
       <div class="d-flex align-center ga-2 mt-3 muted text-caption">
         <v-chip color="primary" variant="flat" size="small" prepend-icon="mdi-lock-outline">
@@ -221,6 +225,11 @@ const visibilityLabel = { private: '個人', company: '会社', department: '部
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
   border-radius: 6px;
 }
+.photo:has(.card-photo--portrait) {
+  width: 60%;
+  margin: 0 auto;
+  aspect-ratio: 55 / 91;
+}
 .photo--empty {
   display: flex;
   align-items: center;
@@ -257,8 +266,20 @@ const visibilityLabel = { private: '個人', company: '会社', department: '部
   background: #1b1a17;
 }
 .detail__name {
+  margin: 0;
   font-size: 26px;
   font-weight: 900;
+  line-height: 1.3;
+}
+/* Right under the name: the reading and the romaji belong to it. */
+.detail__kana {
+  font-size: 13px;
+  line-height: 1.4;
+}
+.memo {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-block: 14px;
 }
 .quick {
   display: grid;

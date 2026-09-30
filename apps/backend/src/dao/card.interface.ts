@@ -19,6 +19,7 @@ export interface CardRecord {
   met_at: string | null
   met_occasion: string | null
   handle_name: string | null
+  memo: string | null
   front_image_id: string | null
   back_image_id: string | null
   visibility: Visibility

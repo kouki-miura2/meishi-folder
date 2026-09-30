@@ -24,14 +24,14 @@ export interface CardExtractorRepository {
 
 export const EXTRACTION_PROMPT = `This image is a business card. Read every item printed on it and reply with only one JSON object, no other text, using exactly these keys:
 {
-  "name": person's full name as printed (string or null),
-  "nameKana": reading of the name in katakana, only if printed (string or null),
-  "nameRomaji": name in Latin letters, only if printed (string or null),
-  "companyName": company or organization name (string or null),
+  "name": person's full name as printed (string or null). Usually the largest text on the card; a Japanese name is typically 2 to 6 kanji,
+  "nameKana": reading of the name in katakana, only if printed (string or null). Often printed in small letters near the name. If the reading is in Latin letters, put it in nameRomaji instead,
+  "nameRomaji": name in Latin letters, only if printed (string or null). Often printed in small letters near the name,
+  "companyName": company or organization name (string or null). Often in the form "〇〇株式会社" or "株式会社〇〇"; it may also be a hospital or an association,
   "departmentNames": departments / divisions (array of strings),
   "titles": job titles or positions (array of strings),
   "jobTypes": professions or qualifications (array of strings),
-  "mobile": mobile phone number (string or null),
+  "mobile": mobile phone number (string or null). A 11 digit number starting with 070, 080 or 090, sometimes with a hyphen every 3 or 4 digits,
   "emails": email addresses (array of strings),
   "otherContacts": other contacts such as SNS accounts (array of strings),
   "url": website URL (string or null),

@@ -91,9 +91,16 @@ const show = (i: number) => {
   aspect-ratio: 91 / 55;
   transition: transform 0.2s;
 }
+.viewer__photo:has(.card-photo--portrait) {
+  /* As tall as the stage allows, but no wider than the screen. */
+  width: auto;
+  height: min(100%, calc((100vw - 20px) * 91 / 55));
+  aspect-ratio: 55 / 91;
+}
 .viewer__thumbs {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 10px;
   padding: 0 20px calc(40px + env(safe-area-inset-bottom));
 }
@@ -101,6 +108,10 @@ const show = (i: number) => {
   width: 72px;
   height: 44px;
   opacity: 0.5;
+}
+.viewer__thumb:has(.card-photo--portrait) {
+  width: 44px;
+  height: 72px;
 }
 .viewer__thumb--active {
   opacity: 1;

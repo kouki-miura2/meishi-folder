@@ -16,6 +16,7 @@ const TEXT_COLUMNS = [
   'met_at',
   'met_occasion',
   'handle_name',
+  'memo',
 ] as const satisfies (keyof CardRecord)[]
 
 const sortKey = (card: CardRecord) => card.name_kana ?? card.handle_name ?? card.name ?? ''

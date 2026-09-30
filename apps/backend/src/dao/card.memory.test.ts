@@ -9,7 +9,7 @@ const setup = () => {
   store.companies.push({ id: 'c-1', user_id: 'user-1', name: 'Acme' })
   store.topics.push({ id: 't-1', user_id: 'user-1', kind: 'project', name: 'Apollo' })
   store.cards.push(
-    cardRecord({ id: 'kana', name: '山田 太郎', name_kana: 'ヤマダ タロウ' }),
+    cardRecord({ id: 'kana', name: '山田 太郎', name_kana: 'ヤマダ タロウ', memo: 'Demo day' }),
     cardRecord({ id: 'handle', handle_name: 'アルファ', company_id: 'c-1' }),
     cardRecord({
       id: 'name-only',
@@ -36,10 +36,12 @@ test('list filters by text across columns and master names', async () => {
   const byEmail = await dao.list('user-1', { q: 'SATO@' })
   const byCompany = await dao.list('user-1', { q: 'acme' })
   const byTopic = await dao.list('user-1', { q: 'apollo' })
+  const byMemo = await dao.list('user-1', { q: 'demo' })
 
   expect(byEmail.map((c) => c.id)).toEqual(['name-only'])
   expect(byCompany.map((c) => c.id)).toEqual(['handle'])
   expect(byTopic.map((c) => c.id)).toEqual(['name-only'])
+  expect(byMemo.map((c) => c.id)).toEqual(['kana'])
 })
 
 test('list requires every requested topic', async () => {

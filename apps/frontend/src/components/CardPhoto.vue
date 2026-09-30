@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { toRef } from 'vue'
+import { ref, toRef } from 'vue'
 
 import { useCardImageUrl } from '../composables/useCards.ts'
 
 const props = defineProps<{ imageId: string | null; label: string }>()
 
 const { url, isLoading } = useCardImageUrl(toRef(props, 'imageId'))
+
+// A portrait (vertical) card is told apart by the photo itself. The class lets the surrounding
+// frame turn tall with `:has(.card-photo--portrait)`.
+const portrait = ref(false)
+const onLoad = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  portrait.value = img.naturalHeight > img.naturalWidth
+}
 </script>
 
 <template>
-  <div class="card-photo">
-    <img v-if="url" :src="url" :alt="`名刺写真（${label}）`" />
+  <div class="card-photo" :class="{ 'card-photo--portrait': url && portrait }">
+    <img v-if="url" :src="url" :alt="`名刺写真（${label}）`" @load="onLoad" />
     <v-progress-circular v-else-if="isLoading" indeterminate size="24" color="secondary" />
     <span v-else class="mono faint">{{ label }}</span>
   </div>
