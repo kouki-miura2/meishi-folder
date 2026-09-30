@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
+import BottomSheet from './BottomSheet.vue'
+
 export interface MergeItem {
   id: string
   name: string
@@ -40,72 +42,70 @@ const confirm = () =>
 </script>
 
 <template>
-  <v-bottom-sheet :model-value="true" @update:model-value="emit('close')">
-    <div class="sheet">
-      <div>
-        <div class="sheet__title">{{ items.length }}件の{{ kindLabel }}を統合</div>
-        <div class="muted text-body-2 mt-1">残す名称を選んでください</div>
-      </div>
-
-      <div class="d-flex flex-column ga-2">
-        <button
-          v-for="item in byCards"
-          :key="item.id"
-          type="button"
-          class="choice"
-          :class="{ 'choice--selected': selected === item.id }"
-          @click="selected = item.id"
-        >
-          <span class="choice__mark" />
-          <span class="flex-grow-1" :class="{ 'font-weight-bold': selected === item.id }">{{
-            item.name
-          }}</span>
-          <span class="muted text-caption">{{ item.cardCount }}枚</span>
-        </button>
-        <div
-          class="choice choice--custom"
-          :class="{ 'choice--selected': isCustom }"
-          @click="selected = 'custom'"
-        >
-          <span class="choice__mark" />
-          <v-text-field
-            v-model="customName"
-            placeholder="別の名称を入力…"
-            variant="plain"
-            density="compact"
-            bg-color="transparent"
-            @focus="selected = 'custom'"
-          />
-        </div>
-      </div>
-
-      <div class="summary">
-        <div class="d-flex justify-space-between">
-          <span class="muted">移動する名刺</span><b class="mono">{{ movingCards }}枚</b>
-        </div>
-        <div
-          v-if="items.some((i) => i.departmentCount !== undefined)"
-          class="d-flex justify-space-between"
-        >
-          <span class="muted">移動する部署</span><b class="mono">{{ movingDepartments }}件</b>
-        </div>
-        <div v-if="items.some((i) => i.departmentCount !== undefined)" class="summary__note">
-          同名の部署はまとめて統合されます。似た名称の部署は部署設定で続けて統合できます
-        </div>
-      </div>
-
-      <v-btn
-        color="primary"
-        class="main-action"
-        block
-        :disabled="!canMerge"
-        :loading="saving"
-        @click="confirm"
-      >
-        統合する
-      </v-btn>
+  <BottomSheet @close="emit('close')">
+    <div>
+      <div class="sheet__title">{{ items.length }}件の{{ kindLabel }}を統合</div>
+      <div class="muted text-body-2 mt-1">残す名称を選んでください</div>
     </div>
-  </v-bottom-sheet>
+
+    <div class="d-flex flex-column ga-2">
+      <button
+        v-for="item in byCards"
+        :key="item.id"
+        type="button"
+        class="choice"
+        :class="{ 'choice--selected': selected === item.id }"
+        @click="selected = item.id"
+      >
+        <span class="choice__mark" />
+        <span class="flex-grow-1" :class="{ 'font-weight-bold': selected === item.id }">{{
+          item.name
+        }}</span>
+        <span class="muted text-caption">{{ item.cardCount }}枚</span>
+      </button>
+      <div
+        class="choice choice--custom"
+        :class="{ 'choice--selected': isCustom }"
+        @click="selected = 'custom'"
+      >
+        <span class="choice__mark" />
+        <v-text-field
+          v-model="customName"
+          placeholder="別の名称を入力…"
+          variant="plain"
+          density="compact"
+          bg-color="transparent"
+          @focus="selected = 'custom'"
+        />
+      </div>
+    </div>
+
+    <div class="summary">
+      <div class="d-flex justify-space-between">
+        <span class="muted">移動する名刺</span><b class="mono">{{ movingCards }}枚</b>
+      </div>
+      <div
+        v-if="items.some((i) => i.departmentCount !== undefined)"
+        class="d-flex justify-space-between"
+      >
+        <span class="muted">移動する部署</span><b class="mono">{{ movingDepartments }}件</b>
+      </div>
+      <div v-if="items.some((i) => i.departmentCount !== undefined)" class="summary__note">
+        同名の部署はまとめて統合されます。似た名称の部署は部署設定で続けて統合できます
+      </div>
+    </div>
+
+    <v-btn
+      color="primary"
+      class="main-action"
+      block
+      :disabled="!canMerge"
+      :loading="saving"
+      @click="confirm"
+    >
+      統合する
+    </v-btn>
+  </BottomSheet>
 </template>
 
 <style scoped>
