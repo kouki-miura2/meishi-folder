@@ -7,7 +7,7 @@ declare module 'vue-router' {
   }
 }
 
-// Screen ids (1a–1m) refer to the design in docs/spec/.
+// Screen ids (1a–1m) refer to the screen design (see docs/spec.md).
 export const routes: RouteRecordRaw[] = [
   {
     path: '/login',

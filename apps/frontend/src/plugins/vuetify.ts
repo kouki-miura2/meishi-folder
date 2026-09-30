@@ -7,7 +7,7 @@ import '../styles/app.css'
 import { createVuetify } from 'vuetify'
 
 /**
- * The "paper" theme from the screen design (docs/spec/README.md): off-white paper, ink-black
+ * The "paper" theme from the screen design (docs/spec.md): off-white paper, ink-black
  * text and rules, and exactly three meaning colors — project red, group blue, AI-review yellow.
  */
 export const vuetify = createVuetify({

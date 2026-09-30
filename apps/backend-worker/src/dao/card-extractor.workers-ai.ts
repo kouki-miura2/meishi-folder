@@ -1,7 +1,7 @@
 import type { CardExtractorDao } from 'backend/src/dao/card-extractor.interface.ts'
 
 // Before the first call, the account must accept Meta's license once by running this model
-// with the prompt "agree" (see docs/implementation-plan.md, phase 0).
+// with the prompt "agree" (see docs/spec.md, 3.4).
 const MODEL = '@cf/meta/llama-3.2-11b-vision-instruct'
 
 export const createCardExtractorDao = (ai: Ai): CardExtractorDao => ({

@@ -84,5 +84,5 @@ DOM-free ceiling for what this view can be unit-tested with. To see the screen i
   `routes.test.ts`) — never a separate `test/` or `__tests__/` tree.
 - API request/response types come from `apps/backend`'s `AppType` via Hono RPC — never hand-write
   a DTO for the response a composable consumes.
-- Screen ids in comments (1a–1m) refer to the design in `docs/spec/` (see `docs/spec/README.md`);
-  match the design there, and keep colors in the Vuetify theme (`src/plugins/vuetify.ts`), not inline.
+- Screen ids in comments (1a–1m) refer to the screen design (see `docs/spec.md`); match the look
+  of the existing views, and keep colors in the Vuetify theme (`src/plugins/vuetify.ts`), not inline.
