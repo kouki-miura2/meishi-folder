@@ -16,7 +16,7 @@ export interface MemoryStore {
   topics: TopicRecord[]
   cards: CardRecord[]
   /** Keyed by `${userId}/${imageId}`. */
-  images: Map<string, CardImageObject>
+  images: Map<string, { object: CardImageObject; uploaded_at: string }>
 }
 
 export const createMemoryStore = (): MemoryStore => ({

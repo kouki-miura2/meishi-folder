@@ -111,16 +111,29 @@ export const fakeCardRepository = (cards: Card[] = []) =>
     },
   }) satisfies CardRepository & { cards: Card[] }
 
-export const fakeCardImageRepository = (images = new Map<string, CardImage>()) =>
-  ({
+export const fakeCardImageRepository = (images = new Map<string, CardImage>()) => {
+  /** When each image was uploaded; an image put without one counts as uploaded now. */
+  const uploadedAt = new Map<string, Date>()
+  return {
     images,
-    put: async (_userId, id, image) => void images.set(id, image),
+    uploadedAt,
+    put: async (_userId, id, image) => {
+      images.set(id, image)
+      uploadedAt.set(id, new Date())
+    },
     get: async (_userId, id) => images.get(id) ?? null,
     exists: async (_userId, id) => images.has(id),
     delete: async (_userId, ids) => {
       for (const id of ids) images.delete(id)
     },
-  }) satisfies CardImageRepository & { images: Map<string, CardImage> }
+    list: async () =>
+      [...images.keys()].map((id) => ({
+        userId: 'user-1',
+        id,
+        uploadedAt: uploadedAt.get(id) ?? new Date(),
+      })),
+  } satisfies CardImageRepository & Record<string, unknown>
+}
 
 export const emptyExtractedCard: ExtractedCard = {
   name: null,

@@ -26,3 +26,21 @@ test('put, get, exists and delete are scoped to the owner', async () => {
   await expect(dao.exists('user-1', 'img-1')).resolves.toBe(false)
   await dao.delete('user-1', [])
 })
+
+test('list returns every stored photo with its owner and upload time', async () => {
+  const dao = createCardImageDao(testEnv.env.IMAGES)
+  const body = new Uint8Array([1]).buffer
+  await dao.put('user-1', 'img-a', { body, content_type: 'image/jpeg' })
+  await dao.put('user-2', 'img-b', { body, content_type: 'image/jpeg' })
+
+  const entries = await dao.list()
+
+  expect(entries.map(({ user_id, id }) => ({ user_id, id }))).toEqual([
+    { user_id: 'user-1', id: 'img-a' },
+    { user_id: 'user-2', id: 'img-b' },
+  ])
+  expect(Number.isNaN(Date.parse(entries[0]?.uploaded_at ?? ''))).toBe(false)
+
+  await dao.delete('user-1', ['img-a'])
+  await dao.delete('user-2', ['img-b'])
+})

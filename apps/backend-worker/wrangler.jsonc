@@ -34,6 +34,10 @@
     "binding": "AI",
     "remote": true,
   },
+  // Daily at 03:00 JST: delete photos uploaded but never saved to a card (src/worker.ts `scheduled`).
+  "triggers": {
+    "crons": ["0 18 * * *"],
+  },
   // GOOGLE_CLIENT_ID (the OAuth client id that Google ID tokens must be issued for) is supplied
   // via `.dev.vars` locally and `wrangler secret put GOOGLE_CLIENT_ID` in production.
 }

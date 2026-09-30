@@ -11,9 +11,11 @@ import { createCardImageService } from 'backend/src/service/card-image.service.t
 import { createCardService } from 'backend/src/service/card.service.ts'
 import { createCompanyService } from 'backend/src/service/company.service.ts'
 import { createDepartmentService } from 'backend/src/service/department.service.ts'
+import { createImageCleanupService } from 'backend/src/service/image-cleanup.service.ts'
 import { createMasterResolver } from 'backend/src/service/master-resolver.ts'
 import { createTopicService } from 'backend/src/service/topic.service.ts'
 import { createUserService } from 'backend/src/service/user.service.ts'
+import { createLogger } from 'utils'
 
 import { stripApiPrefix } from './api-path.ts'
 import { createCardExtractorDao } from './dao/card-extractor.workers-ai.ts'
@@ -30,12 +32,11 @@ type WorkerEnv = Env & { GOOGLE_CLIENT_ID?: string }
 const createWorkerApp = (env: WorkerEnv) => {
   if (!env.GOOGLE_CLIENT_ID) throw new Error('GOOGLE_CLIENT_ID is not set')
 
+  const { cardRepository, cardImageRepository } = createCardRepositories(env)
   const userRepository = createUserRepository(createUserDao(env.DB))
   const companyRepository = createCompanyRepository(createCompanyDao(env.DB))
   const departmentRepository = createDepartmentRepository(createDepartmentDao(env.DB))
   const topicRepository = createTopicRepository(createTopicDao(env.DB))
-  const cardRepository = createCardRepository(createCardDao(env.DB))
-  const cardImageRepository = createCardImageRepository(createCardImageDao(env.IMAGES))
   const cardExtractorRepository = createCardExtractorRepository(createCardExtractorDao(env.AI))
   const masterResolver = createMasterResolver({
     companyRepository,
@@ -71,12 +72,22 @@ const createWorkerApp = (env: WorkerEnv) => {
   })
 }
 
+const createCardRepositories = (env: WorkerEnv) => ({
+  cardRepository: createCardRepository(createCardDao(env.DB)),
+  cardImageRepository: createCardImageRepository(createCardImageDao(env.IMAGES)),
+})
+
 // Bindings only exist per request, but they stay the same for the life of the isolate.
 let app: ReturnType<typeof createWorkerApp> | undefined
 
 // Only `/api/*` reaches this handler (`assets.run_worker_first` in wrangler.jsonc); every other
 // path is the frontend, served from static assets on the same origin.
+// The cron trigger (wrangler.jsonc) sweeps out photos uploaded but never saved to a card.
 export default {
   fetch: (request, env, ctx) =>
     (app ??= createWorkerApp(env)).fetch(stripApiPrefix(request), env, ctx),
+  scheduled: async (_controller, env) => {
+    const deleted = await createImageCleanupService(createCardRepositories(env)).deleteOrphans()
+    createLogger({ format: 'json' }).info('orphan images deleted', { count: deleted })
+  },
 } satisfies ExportedHandler<WorkerEnv>

@@ -236,6 +236,9 @@ importers:
       backend:
         specifier: workspace:*
         version: link:../backend
+      utils:
+        specifier: workspace:*
+        version: link:../../packages/utils
     devDependencies:
       typescript:
         specifier: 'catalog:'

@@ -18,3 +18,17 @@ test('put, get, exists and delete are scoped to the owner', async () => {
   await dao.delete('user-1', ['img-1'])
   await expect(dao.exists('user-1', 'img-1')).resolves.toBe(false)
 })
+
+test('list returns every stored photo with its owner and upload time', async () => {
+  const dao = createCardImageDao(createMemoryStore())
+  await dao.put('user-1', 'img-1', image)
+  await dao.put('user-2', 'img-2', image)
+
+  const entries = await dao.list()
+
+  expect(entries.map(({ user_id, id }) => ({ user_id, id }))).toEqual([
+    { user_id: 'user-1', id: 'img-1' },
+    { user_id: 'user-2', id: 'img-2' },
+  ])
+  expect(Number.isNaN(Date.parse(entries[0]?.uploaded_at ?? ''))).toBe(false)
+})

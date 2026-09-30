@@ -12,7 +12,8 @@
     "test": "vp test"
   },
   "dependencies": {
-    "backend": "workspace:*"
+    "backend": "workspace:*",
+    "utils": "workspace:*"
   },
   "devDependencies": {
     "typescript": "catalog:",
