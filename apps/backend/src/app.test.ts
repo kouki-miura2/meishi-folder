@@ -342,6 +342,8 @@ test('text values are capped by visible characters, not UTF-16 code units', asyn
   // Each family emoji is 8 UTF-16 code units but one character.
   expect((await post('👨‍👩‍👧'.repeat(LIMITS.textMaxLength))).status).toBe(201)
   expect((await post('あ'.repeat(LIMITS.textMaxLength + 1))).status).toBe(400)
+  // One character by grapheme count, but megabytes of combining marks.
+  expect((await post(`a${'́'.repeat(1_000_000)}`)).status).toBe(400)
 })
 
 test('requests with a body over the limit are rejected with 413 before reaching the service', async () => {

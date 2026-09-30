@@ -59,10 +59,17 @@ const userIdOf = (c: Context<{ Variables: Variables }>): string => {
   return id
 }
 
-// Counted as a person sees characters (`charLength`), not UTF-16 code units, to match the UI.
-const text = z.string().refine((value) => charLength(value) <= LIMITS.textMaxLength, {
-  message: `Must be at most ${LIMITS.textMaxLength} characters`,
-})
+// Counted as a person sees characters (`charLength`), not UTF-16 code units, to match the UI. A
+// single character has no size bound of its own (combining marks can pile up without end), so a
+// hard cap on code units comes first — room for the longest emoji sequences — and also keeps huge
+// input away from the segmenter.
+const MAX_CODE_UNITS_PER_CHAR = 16
+const text = z
+  .string()
+  .max(LIMITS.textMaxLength * MAX_CODE_UNITS_PER_CHAR)
+  .refine((value) => charLength(value) <= LIMITS.textMaxLength, {
+    message: `Must be at most ${LIMITS.textMaxLength} characters`,
+  })
 const optionalText = text.nullish()
 const texts = z.array(text).max(LIMITS.valuesPerField).optional()
 const nameSchema = z.object({ name: text })
