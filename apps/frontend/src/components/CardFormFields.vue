@@ -1,20 +1,28 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, toRaw } from 'vue'
 
 import {
   useCompaniesQuery,
   useDepartmentsQuery,
   useTopicsQuery,
 } from '../composables/useMasters.ts'
-import { type CardForm, type ReviewField, emptyOffice } from '../domain/card-form.ts'
+import {
+  type CardForm,
+  type PrintedField,
+  type ReviewField,
+  changedPrintedFields,
+  emptyOffice,
+  printedText,
+} from '../domain/card-form.ts'
 import { masterStatus } from '../domain/master-names.ts'
+import PrintedChange from './PrintedChange.vue'
 import StringListField from './StringListField.vue'
 import TopicPicker from './TopicPicker.vue'
 
-export type CardFormSection = 'printed' | 'scene' | 'notes' | 'visibility'
+export type CardFormSection = 'printed' | 'scene' | 'notes' | 'memo' | 'visibility'
 
 // Every card field, grouped as the design groups them. Used by the confirm step of registration
-// (1f: printed items and scene) and by the edit screen (1i: everything).
+// (1f: printed items, scene and memo) and by the edit screen (1i: everything).
 const form = defineModel<CardForm>({ required: true })
 
 const props = withDefaults(
@@ -24,8 +32,10 @@ const props = withDefaults(
     review?: Set<ReviewField>
     /** Show whether the company / departments match an existing master or will create one. */
     showMasterStatus?: boolean
+    /** The card before its printed items were overwritten: each changed item shows what it was. */
+    before?: CardForm | null
   }>(),
-  { review: () => new Set(), showMasterStatus: false },
+  { review: () => new Set(), showMasterStatus: false, before: null },
 )
 
 const { data: companies } = useCompaniesQuery()
@@ -56,6 +66,13 @@ const set = <K extends keyof CardForm>(key: K, value: CardForm[K]) => {
 }
 const has = (section: CardFormSection) => props.sections.includes(section)
 const reviewed = (field: ReviewField) => props.review.has(field)
+
+const changed = computed(() =>
+  props.before ? changedPrintedFields(props.before, form.value) : new Set<PrintedField>(),
+)
+const restore = (field: PrintedField) => {
+  if (props.before) set(field, structuredClone(toRaw(props.before[field])))
+}
 </script>
 
 <template>
@@ -72,6 +89,11 @@ const reviewed = (field: ReviewField) => props.review.has(field)
             <v-chip color="caution" size="x-small">要確認</v-chip>
           </template>
         </v-text-field>
+        <PrintedChange
+          v-if="changed.has('name')"
+          :before="printedText(before!, 'name')"
+          @restore="restore('name')"
+        />
         <v-text-field
           :model-value="form.nameKana"
           label="氏名カナ"
@@ -81,10 +103,20 @@ const reviewed = (field: ReviewField) => props.review.has(field)
             <v-chip color="caution" size="x-small">要確認</v-chip>
           </template>
         </v-text-field>
+        <PrintedChange
+          v-if="changed.has('nameKana')"
+          :before="printedText(before!, 'nameKana')"
+          @restore="restore('nameKana')"
+        />
         <v-text-field
           :model-value="form.nameRomaji"
           label="氏名ローマ字"
           @update:model-value="set('nameRomaji', $event)"
+        />
+        <PrintedChange
+          v-if="changed.has('nameRomaji')"
+          :before="printedText(before!, 'nameRomaji')"
+          @restore="restore('nameRomaji')"
         />
         <v-combobox
           :model-value="form.companyName"
@@ -98,10 +130,15 @@ const reviewed = (field: ReviewField) => props.review.has(field)
             </v-chip>
           </template>
         </v-combobox>
+        <PrintedChange
+          v-if="changed.has('companyName')"
+          :before="printedText(before!, 'companyName')"
+          @restore="restore('companyName')"
+        />
         <v-combobox
           :model-value="form.departmentNames"
           :items="departmentNames"
-          label="所属"
+          label="部署"
           multiple
           chips
           closable-chips
@@ -113,15 +150,30 @@ const reviewed = (field: ReviewField) => props.review.has(field)
             </v-chip>
           </template>
         </v-combobox>
+        <PrintedChange
+          v-if="changed.has('departmentNames')"
+          :before="printedText(before!, 'departmentNames')"
+          @restore="restore('departmentNames')"
+        />
         <StringListField
           :model-value="form.titles"
           label="役職"
           @update:model-value="set('titles', $event)"
         />
+        <PrintedChange
+          v-if="changed.has('titles')"
+          :before="printedText(before!, 'titles')"
+          @restore="restore('titles')"
+        />
         <StringListField
           :model-value="form.jobTypes"
           label="職種"
           @update:model-value="set('jobTypes', $event)"
+        />
+        <PrintedChange
+          v-if="changed.has('jobTypes')"
+          :before="printedText(before!, 'jobTypes')"
+          @restore="restore('jobTypes')"
         />
         <v-text-field
           :model-value="form.mobile"
@@ -134,6 +186,11 @@ const reviewed = (field: ReviewField) => props.review.has(field)
             <v-chip color="caution" size="x-small">要確認</v-chip>
           </template>
         </v-text-field>
+        <PrintedChange
+          v-if="changed.has('mobile')"
+          :before="printedText(before!, 'mobile')"
+          @restore="restore('mobile')"
+        />
         <StringListField
           :model-value="form.emails"
           label="メール"
@@ -141,6 +198,11 @@ const reviewed = (field: ReviewField) => props.review.has(field)
           mono
           :review="reviewed('emails')"
           @update:model-value="set('emails', $event)"
+        />
+        <PrintedChange
+          v-if="changed.has('emails')"
+          :before="printedText(before!, 'emails')"
+          @restore="restore('emails')"
         />
         <v-text-field
           :model-value="form.url"
@@ -153,10 +215,20 @@ const reviewed = (field: ReviewField) => props.review.has(field)
             <v-chip color="caution" size="x-small">要確認</v-chip>
           </template>
         </v-text-field>
+        <PrintedChange
+          v-if="changed.has('url')"
+          :before="printedText(before!, 'url')"
+          @restore="restore('url')"
+        />
         <StringListField
           :model-value="form.otherContacts"
           label="その他連絡"
           @update:model-value="set('otherContacts', $event)"
+        />
+        <PrintedChange
+          v-if="changed.has('otherContacts')"
+          :before="printedText(before!, 'otherContacts')"
+          @restore="restore('otherContacts')"
         />
       </div>
 
@@ -167,6 +239,12 @@ const reviewed = (field: ReviewField) => props.review.has(field)
         >
       </div>
       <div class="fields">
+        <PrintedChange
+          v-if="changed.has('offices')"
+          :before="printedText(before!, 'offices')"
+          class="mt-0"
+          @restore="restore('offices')"
+        />
         <div v-for="(office, index) in form.offices" :key="index" class="panel office">
           <div class="office__head">
             <span class="muted">事業所 {{ index + 1 }}</span>
@@ -260,18 +338,33 @@ const reviewed = (field: ReviewField) => props.review.has(field)
       </div>
     </template>
 
+    <template v-if="has('memo')">
+      <div class="section-title">メモ</div>
+      <v-textarea
+        :model-value="form.memo"
+        placeholder="自由に記入できます"
+        auto-grow
+        rows="3"
+        :maxlength="1000"
+        counter
+        @update:model-value="set('memo', $event)"
+      />
+    </template>
+
     <template v-if="has('visibility')">
       <div class="section-title">公開範囲</div>
       <v-btn-toggle
         :model-value="form.visibility"
         mandatory
+        variant="outlined"
         divided
+        color="primary"
         class="visibility"
         @update:model-value="set('visibility', $event)"
       >
         <v-btn value="private">個人</v-btn>
-        <v-btn value="company">会社</v-btn>
-        <v-btn value="department">部署</v-btn>
+        <v-btn value="company" disabled>会社</v-btn>
+        <v-btn value="department" disabled>部署</v-btn>
       </v-btn-toggle>
       <div class="faint mt-2 text-caption">
         「会社」「部署」は相互認証した組織と共有されます（今後対応）

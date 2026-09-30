@@ -2,8 +2,11 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 // 1d: photograph the front, then the back (or skip it). Without a usable camera (desktop, denied
-// permission) the same flow works by choosing photo files.
+// permission) the same flow works by choosing photo files. The frame is landscape or portrait to fit
+// the card, and a shot is cropped to what the frame shows, so a portrait card gives a portrait photo.
 const emit = defineEmits<{ done: [front: Blob, back: Blob | null]; cancel: [] }>()
+/** Retaking a registered card's photos: skipping the back keeps the photo it has. */
+defineProps<{ keepBack?: boolean }>()
 
 const video = ref<HTMLVideoElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -11,6 +14,7 @@ const stream = ref<MediaStream | null>(null)
 const cameraFailed = ref(false)
 const front = ref<Blob | null>(null)
 const side = ref<'front' | 'back'>('front')
+const portrait = ref(false)
 
 onMounted(async () => {
   try {
@@ -37,10 +41,26 @@ const accept = (photo: Blob) => {
 const shoot = () => {
   const v = video.value
   if (!v || !v.videoWidth) return
+  // The video is shown with `object-fit: cover`: keep only the centered part the frame shows.
+  const scale = Math.max(v.clientWidth / v.videoWidth, v.clientHeight / v.videoHeight)
+  const width = Math.round(v.clientWidth / scale)
+  const height = Math.round(v.clientHeight / scale)
   const canvas = document.createElement('canvas')
-  canvas.width = v.videoWidth
-  canvas.height = v.videoHeight
-  canvas.getContext('2d')?.drawImage(v, 0, 0)
+  canvas.width = width
+  canvas.height = height
+  canvas
+    .getContext('2d')
+    ?.drawImage(
+      v,
+      (v.videoWidth - width) / 2,
+      (v.videoHeight - height) / 2,
+      width,
+      height,
+      0,
+      0,
+      width,
+      height,
+    )
   canvas.toBlob((blob) => blob && accept(blob), 'image/jpeg', 0.92)
 }
 
@@ -74,12 +94,16 @@ const skipBack = () => {
     </div>
 
     <div class="camera__stage">
-      <div class="frame">
+      <div class="frame" :class="{ 'frame--portrait': portrait }">
         <video v-show="!cameraFailed" ref="video" autoplay playsinline muted class="frame__video" />
         <div v-if="cameraFailed" class="frame__fallback mono">camera unavailable</div>
         <span class="corner tl" /><span class="corner tr" /><span class="corner bl" /><span
           class="corner br"
         />
+      </div>
+      <div v-if="!cameraFailed" class="sides" role="group" aria-label="名刺の向き">
+        <button type="button" :class="{ active: !portrait }" @click="portrait = false">横型</button>
+        <button type="button" :class="{ active: portrait }" @click="portrait = true">縦型</button>
       </div>
       <div class="hint">
         <template v-if="cameraFailed"
@@ -111,7 +135,8 @@ const skipBack = () => {
         :style="{ visibility: side === 'back' ? 'visible' : 'hidden' }"
         @click="skipBack"
       >
-        <span class="control__icon control__icon--round">→</span>裏面をスキップ
+        <span class="control__icon control__icon--round">→</span
+        >{{ keepBack ? '裏面は今のまま' : '裏面をスキップ' }}
       </button>
       <input ref="fileInput" type="file" accept="image/*" hidden @change="choose" />
     </div>
@@ -145,12 +170,13 @@ const skipBack = () => {
   font-size: 13px;
   font-weight: 700;
 }
-.sides span {
+.sides span,
+.sides button {
   padding: 7px 16px;
   border-radius: 17px;
   color: rgba(255, 255, 255, 0.6);
 }
-.sides span.active {
+.sides .active {
   background: #f5f3ee;
   color: #1b1a17;
 }
@@ -169,6 +195,11 @@ const skipBack = () => {
   width: 100%;
   max-width: 360px;
   aspect-ratio: 91 / 55;
+}
+.frame--portrait {
+  /* Keep the tall frame, the toggle and the hint within the stage on a short screen. */
+  max-width: min(240px, calc((100dvh - 360px) * 55 / 91));
+  aspect-ratio: 55 / 91;
 }
 .frame__video,
 .frame__fallback {

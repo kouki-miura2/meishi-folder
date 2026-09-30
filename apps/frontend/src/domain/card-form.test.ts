@@ -2,10 +2,13 @@ import { expect, test } from 'vite-plus/test'
 
 import type { CardView, ExtractedCard } from '../api/types.ts'
 import {
+  changedPrintedFields,
   emptyCardForm,
   fieldsToReview,
   formFromCard,
   formFromExtracted,
+  overwritePrinted,
+  printedText,
   toCreateInput,
   toOverwriteInput,
   toUpdateInput,
@@ -30,6 +33,7 @@ const card: CardView = {
   metAt: '東京ビッグサイト',
   metOccasion: null,
   handleName: null,
+  memo: '展示会で\nデモを見せてもらった',
   projects: [{ id: 't-1', name: 'スマートビル' }],
   groups: [{ id: 't-2', name: 'IoT勉強会' }],
   frontImageId: 'img-1',
@@ -76,6 +80,7 @@ test('formFromCard and toUpdateInput round-trip a card, names in place of master
     metAt: '東京ビッグサイト',
     metOccasion: null,
     handleName: null,
+    memo: '展示会で\nデモを見せてもらった',
     projectNames: ['スマートビル'],
     groupNames: ['IoT勉強会'],
     visibility: 'private',
@@ -171,4 +176,50 @@ test('fieldsToReview passes well-formed values and flags a missing name', () => 
   })
 
   expect([...review]).toEqual(['name'])
+})
+
+test('overwritePrinted replaces the printed items and keeps scene, notes and visibility', () => {
+  const form = overwritePrinted(formFromCard(card), extracted)
+
+  expect(form).toMatchObject({
+    nameKana: '',
+    nameRomaji: 'Kenji Sato',
+    mobile: '090-1234-5678',
+    emails: [],
+    offices: [],
+    metOn: '2026-09-29',
+    metAt: '東京ビッグサイト',
+    memo: card.memo,
+    projectNames: ['スマートビル'],
+  })
+})
+
+test('changedPrintedFields lists the printed items that differ, ignoring blanks and spaces', () => {
+  const before = formFromCard(card)
+  const after = {
+    ...overwritePrinted(before, extracted),
+    name: ' 佐藤 健二 ',
+    titles: ['部長', ''],
+  }
+
+  expect([...changedPrintedFields(before, after)]).toEqual([
+    'nameKana',
+    'nameRomaji',
+    'mobile',
+    'emails',
+    'offices',
+  ])
+})
+
+test('printedText shows a printed item as one line', () => {
+  const form = {
+    ...formFromCard(card),
+    titles: ['部長', '技師'],
+    offices: [{ postalCode: '105-0011', address: '東京都港区', tel: '03-1234-5678', fax: '' }],
+  }
+
+  expect(printedText(form, 'name')).toBe('佐藤 健二')
+  expect(printedText(form, 'mobile')).toBe('')
+  expect(printedText(form, 'titles')).toBe('部長、技師')
+  expect(printedText(form, 'offices')).toBe('〒105-0011 東京都港区 TEL 03-1234-5678')
 })

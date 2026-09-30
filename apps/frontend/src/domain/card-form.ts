@@ -31,6 +31,7 @@ export interface CardForm {
   metAt: string
   metOccasion: string
   handleName: string
+  memo: string
   projectNames: string[]
   groupNames: string[]
   visibility: Visibility
@@ -55,6 +56,7 @@ export const emptyCardForm = (): CardForm => ({
   metAt: '',
   metOccasion: '',
   handleName: '',
+  memo: '',
   projectNames: [],
   groupNames: [],
   visibility: 'private',
@@ -84,6 +86,7 @@ export const formFromCard = (card: CardView): CardForm => ({
   metAt: card.metAt ?? '',
   metOccasion: card.metOccasion ?? '',
   handleName: card.handleName ?? '',
+  memo: card.memo ?? '',
   projectNames: card.projects.map((p) => p.name),
   groupNames: card.groups.map((g) => g.name),
   visibility: card.visibility,
@@ -133,6 +136,55 @@ const printedInput = (form: CardForm) => ({
     .filter((o) => Object.values(o).some((v) => v !== null)),
 })
 
+export const PRINTED_FIELDS = [
+  'name',
+  'nameKana',
+  'nameRomaji',
+  'companyName',
+  'departmentNames',
+  'titles',
+  'jobTypes',
+  'mobile',
+  'emails',
+  'otherContacts',
+  'url',
+  'offices',
+] as const satisfies (keyof CardForm)[]
+export type PrintedField = (typeof PRINTED_FIELDS)[number]
+
+/** A registered card read again from a new photo: its printed items replaced, the rest kept. */
+export const overwritePrinted = (form: CardForm, extracted: ExtractedCard): CardForm => {
+  const read = formFromExtracted(extracted, form.metOn)
+  return { ...form, ...Object.fromEntries(PRINTED_FIELDS.map((f) => [f, read[f]])) }
+}
+
+/** The printed items that differ between two forms, ignoring blanks and surrounding spaces. */
+export const changedPrintedFields = (before: CardForm, after: CardForm): Set<PrintedField> => {
+  const [a, b] = [printedInput(before), printedInput(after)]
+  return new Set(PRINTED_FIELDS.filter((f) => JSON.stringify(a[f]) !== JSON.stringify(b[f])))
+}
+
+/** A printed item as one line of text, to show what it was before an overwrite. */
+export const printedText = (form: CardForm, field: PrintedField): string => {
+  const input = printedInput(form)
+  if (field === 'offices') {
+    return input.offices
+      .map((o) =>
+        [
+          o.postalCode && `〒${o.postalCode}`,
+          o.address,
+          o.tel && `TEL ${o.tel}`,
+          o.fax && `FAX ${o.fax}`,
+        ]
+          .filter(Boolean)
+          .join(' '),
+      )
+      .join(' / ')
+  }
+  const value = input[field]
+  return Array.isArray(value) ? value.join('、') : (value ?? '')
+}
+
 export interface CardImages {
   frontImageId: string | null
   backImageId: string | null
@@ -145,6 +197,7 @@ export const toCreateInput = (form: CardForm, images: CardImages): CardInput => 
   metAt: text(form.metAt),
   metOccasion: text(form.metOccasion),
   handleName: text(form.handleName),
+  memo: text(form.memo),
   projectNames: texts(form.projectNames),
   groupNames: texts(form.groupNames),
   ...images,
@@ -176,7 +229,7 @@ export const validateCardForm = (form: CardForm): string[] => {
     errors.push('氏名・氏名カナ・ハンドルネームのいずれかを入力してください')
   }
   if (!text(form.companyName) && texts(form.departmentNames).length > 0) {
-    errors.push('所属を入力するときは会社・団体名も入力してください')
+    errors.push('部署を入力するときは会社・団体名も入力してください')
   }
   if (text(form.metOn) && !/^\d{4}-\d{2}-\d{2}$/.test(form.metOn.trim())) {
     errors.push('取得日は YYYY-MM-DD の形式で入力してください')

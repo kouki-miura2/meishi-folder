@@ -1,14 +1,14 @@
 <script setup lang="ts">
 // 1e: what is happening while the card is read. `step` is the index of the running step.
-defineProps<{ step: number }>()
+withDefaults(defineProps<{ step: number; steps?: string[] }>(), {
+  steps: () => [
+    '画像をアップロード',
+    '記載項目をAIで抽出',
+    '会社・部署マスタと照合',
+    '登録済みの名刺と照合',
+  ],
+})
 defineEmits<{ skip: [] }>()
-
-const steps = [
-  '画像をアップロード',
-  '記載項目をAIで抽出',
-  '会社・部署マスタと照合',
-  '登録済みの名刺と照合',
-]
 </script>
 
 <template>

@@ -65,14 +65,18 @@ export const useDeleteCardMutation = (queryClient?: QueryClient) =>
     if (!res.ok) throw new ApiError(res.status, `Request failed: ${res.status}`)
   }, queryClient)
 
-export const useUploadImageMutation = (queryClient?: QueryClient) =>
-  useMutation(
+/** Uploads a photo. The photo goes into the image cache too, so showing it needs no download. */
+export const useUploadImageMutation = (queryClient?: QueryClient) => {
+  const client = queryClient ?? useQueryClient()
+  return useMutation(
     {
       mutationFn: async (file: File) =>
         unwrap(await apiClient.images.$post({ form: { file } }, longRequest())),
+      onSuccess: ({ id }, file) => client.setQueryData(['image', id], file),
     },
-    queryClient,
+    client,
   )
+}
 
 export const useExtractCardMutation = (queryClient?: QueryClient) =>
   useMutation(
@@ -82,6 +86,20 @@ export const useExtractCardMutation = (queryClient?: QueryClient) =>
     },
     queryClient,
   )
+
+const downloadImage = async (id: string) => {
+  const res = await apiClient.images[':id'].$get({ param: { id } })
+  if (!res.ok) throw new ApiError(res.status, `Request failed: ${res.status}`)
+  return res.blob()
+}
+
+/** A card photo's content, from the cache when it is already shown. An image id never gets different content. */
+export const fetchCardImage = (client: QueryClient, id: string) =>
+  client.fetchQuery({
+    queryKey: ['image', id],
+    queryFn: () => downloadImage(id),
+    staleTime: Infinity,
+  })
 
 /**
  * A card photo as an object URL for `<img src>`: the API needs the Authorization header, which an
@@ -94,11 +112,7 @@ export const useCardImageUrl = (
   const query = useQuery(
     {
       queryKey: ['image', id],
-      queryFn: async () => {
-        const res = await apiClient.images[':id'].$get({ param: { id: toValue(id) ?? '' } })
-        if (!res.ok) throw new ApiError(res.status, `Request failed: ${res.status}`)
-        return res.blob()
-      },
+      queryFn: () => downloadImage(toValue(id) ?? ''),
       enabled: computed(() => !!toValue(id)),
       // An image id never gets different content.
       staleTime: Infinity,
