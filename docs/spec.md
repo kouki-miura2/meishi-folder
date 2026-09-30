@@ -102,3 +102,130 @@ An app for registering and organizing business cards using photos.
     - 上書き対象: 名刺写真・名刺記載項目のみ。場面・補足事項は既存の値を保持する
 - マスタ正規化（名寄せ）
   - 表記ゆれで同じ意味の会社・団体や部署のマスタが作られた場合、ユーザーが後から名寄せする
+
+## 画面デザイン
+
+- Claude Design で作成: https://claude.ai/artifact/QRofMAZDkyMytHHhwciqRq
+- claude.ai の artifact はレスポンスが遅いため、[spec/](spec/) に取得したものを参照する。画面一覧とデザイントークンは [spec/README.md](spec/README.md)、画面定義は [spec/design-source.html](spec/design-source.html)、見た目は [spec/design.html](spec/design.html)（ブラウザで開く）。以下の画面 ID（1a〜1m）はこのデザインの番号。
+- スマホ（幅 390px）が基準。PC では同じレイアウトを中央寄せ（最大幅 480px）で表示する。
+- 色はデザインどおり（紙のオフホワイト・墨色、意味色はプロジェクト＝赤・グループ＝青・AI 要確認＝黄の 3 つだけ）。
+- フォント: 本文は Noto Sans JP（デザインの Zen Kaku Gothic New は使わない）、数字・英字（日付・件数・メール等）は IBM Plex Mono。
+
+## 画面仕様（補足）
+
+| URL                                          | 画面                                                           | デザイン |
+| -------------------------------------------- | -------------------------------------------------------------- | -------- |
+| `/login`                                     | Google ログイン（デザインにないため、1a と同じトーン）         | —        |
+| `/welcome`                                   | ようこそ（初回プロフィール）。プロフィール・所属の変更にも使う | 1a       |
+| `/`                                          | 名刺一覧・検索・フィルタ                                       | 1b, 1c   |
+| `/cards/new`                                 | 名刺登録（撮影 → AI 抽出中 → 確認・訂正 → 同一人物の候補）     | 1d〜1g   |
+| `/cards/:id`                                 | 名刺詳細（参照）。写真タップで画像ビューワ                     | 1h, 1j   |
+| `/cards/:id/edit`                            | 名刺詳細（変更・削除）                                         | 1i       |
+| `/settings/companies`                        | 会社・団体設定（統合はボトムシート）                           | 1k, 1l   |
+| `/settings/companies/:companyId/departments` | 部署設定                                                       | 1m       |
+
+- 未ログインは `/login` へ。ログイン済みでプロフィール未登録なら `/welcome` へ。ログイン後は元の画面に戻る。
+- 一覧右上のアバターから、プロフィール・所属の変更、会社・団体の設定、ログアウトを開く（デザインに入口がないため）。
+- ようこそ画面: 初回は Google アカウントの名前を氏名の初期値にする。ログイン中の Google アカウント（メール）を表示する。
+- 名刺一覧:
+  - 五十音の見出しと索引（ア・カ・サ・タ・ナ・ハ・マ・ヤ・ラ・ワ・A・#）。見出しは氏名カナ → ハンドルネーム → 氏名の先頭文字で決める（ひらがなはカタカナとして扱う、英数字は A、それ以外は #）。
+  - 検索欄は全項目のテキスト検索（入力が止まってから検索する）。
+  - フィルタは関連プロジェクト・関連グループの選択と、複数選択時の条件「いずれか（初期値）/ すべて」。フィルタ条件は URL に残り、詳細から戻っても保たれる。
+- 名刺登録:
+  - 撮影は表 → 裏の順。「写真を選択」でファイルからも選べる。裏面はスキップできる。カメラが使えない環境ではファイル選択だけになる。
+  - 写真は長辺 1600px の JPEG に縮小してからアップロードする。
+  - AI 抽出中の画面で「スキップして手入力」を選べる。抽出に失敗したときも手入力の確認画面に進む。
+  - 確認画面では、抽出した項目数と「要確認」（読み取りを誤っている可能性がある項目）を表示する。AI は確信度を返さないため、形式で判定する: 氏名が空、カナがカタカナでない、電話番号の文字・桁数が不正（050/070/080/090 は 11 桁、ほかは 10 桁、+ で始まる国際表記は 8〜15 桁）、メール・URL・郵便番号の形式が不正。
+  - 会社・団体と所属には、既存のマスタと一致するか（「既存マスタ」）、保存時に作られるか（「新規作成」）を表示する。
+  - 取得日の初期値は今日。保存前に、氏名が一致する登録済みの名刺があれば同一人物の候補を表示する（1g）。
+- 名刺詳細: 電話・メール・地図のボタン（携帯または事業所の電話、先頭のメール、事業所の住所）。「•••」メニューは「この名刺を削除」だけ。削除は確認してから行い、写真も削除する。
+- 画像ビューワ: 表・裏の切り替え、ピンチで拡大、回転（表示だけで保存しない）。
+- 会社・団体設定・部署設定: 名刺の枚数（会社は部署の数も）を表示する。表記ゆれの可能性があるマスタ（空白・記号・全角半角・「(株)」と「株式会社」などの違いを除くと同じ名称）に「表記ゆれ?」を表示し、まとめて統合できる。名刺や所属で使われているマスタは削除できず、統合を案内する。統合では残す名称を選ぶか、別の名称を入力する。
+
+## システム構成
+
+- 1 つの Cloudflare Worker（https://meishi-folder.miu-soft.workers.dev ）で、フロントエンドと API を同じオリジンから配信する。API は `/api` の下、それ以外のパスはフロントエンド（存在しないパスは SPA の `index.html`）。
+- フロントエンド: Vue 3 + Vuetify 4 + vue-router + TanStack Query + Pinia（`apps/frontend`）。
+- API: Hono（`apps/backend`、ランタイム非依存）を Cloudflare Workers で動かす（`apps/backend-worker`）。フロントエンドは Hono RPC で型付きに呼ぶ。
+- データ: ユーザー・名刺・マスタは D1、名刺写真は R2、名刺記載項目の抽出は Workers AI（`@cf/meta/llama-3.2-11b-vision-instruct`）。
+
+### 認証
+
+- フロントエンドが Google Identity Services で ID トークン（JWT）を取得し、`Authorization: Bearer <token>` で API に送る。独自のセッションは持たない。
+- API は Google の公開鍵で署名を検証し、発行者・宛先（OAuth クライアント ID）・有効期限を確認する。ユーザーは Google の `sub` で識別する。
+- ID トークンは 1 時間で失効する。失効間近のトークンは送らず、API が 401 を返したらサインアウトしてログイン画面へ戻す。ログイン画面は Google の自動ログインを試すので、再ログインの手間はほぼない。
+- OAuth クライアント ID は公開リポジトリにコミットしない（API はシークレット、フロントエンドはローカルの `.env.local` から渡し、ビルド時にバンドルへ埋め込む）。
+
+### アクセス権・マスタ
+
+- 全データを所有者（Google の `sub`）で絞り込む。他ユーザーのデータは「存在しない」（404）として扱う。
+- 公開範囲は保存・変更できるが、参照の制御にはまだ使わない（将来の相互認証で使う）。
+- マスタ（会社・団体、部署、関連プロジェクト、関連グループ）は名称で受け取り、前後の空白を除いた完全一致で既存のマスタを探し、無ければ作る。表記ゆれは統合で解消する。
+- 関連プロジェクト・関連グループは、名刺の登録・更新時に入力すれば作られる（GitHub のトピックと同じ）。名称変更・削除・統合の画面はない。
+
+### 名刺写真
+
+- 登録フローでは先にアップロードして ID で参照する（AI 抽出と保存で同じ写真を 2 回送らない）。
+- 形式は JPEG / PNG / WebP、1 枚 5MB まで。R2 に `<ユーザー>/<写真 ID>` のキーで保存する。
+- 名刺の削除時と、同一人物の上書きで差し替えられたときに、元の写真も削除する。
+
+### AI 抽出
+
+- 表・裏を 1 枚ずつモデルに読ませ、表の値を優先して、表に無い項目を裏の値で補う（裏の英語表記のローマ字名など）。
+- モデルには決まった形の JSON で答えさせる。応答が壊れていても失敗にせず、読めなかった項目は空のまま返す（ユーザーが確認画面で直す）。
+
+### データモデル（D1）
+
+```text
+users             id(=Google sub) PK, name, name_kana, created_at, updated_at
+user_affiliations user_id, company_id, department_id(NULL可)
+companies         id PK, user_id, name              UNIQUE(user_id, name)
+departments       id PK, user_id, company_id, name  UNIQUE(company_id, name)
+topics            id PK, user_id, kind('project'|'group'), name  UNIQUE(user_id, kind, name)
+cards             id PK, user_id,
+                  name, name_kana, name_romaji, company_id(NULL可),
+                  titles JSON, job_types JSON, mobile, emails JSON, other_contacts JSON, url,
+                  offices JSON  -- [{postalCode, address, tel, fax}]
+                  met_on, met_at, met_occasion, handle_name,
+                  front_image_id, back_image_id, visibility('private'|'company'|'department'),
+                  created_at, updated_at
+card_departments  card_id, department_id            -- 所属(0..N)
+card_topics       card_id, topic_id                 -- 関連プロジェクト・グループ(0..N)
+```
+
+- マスタを参照しない複数値（役職、職種、メール、その他連絡、事業所）は JSON 列に持つ。
+- テキスト検索（全項目）は `LIKE`。件数が増えて遅くなったら全文検索（FTS5）を検討する。
+
+### API
+
+すべて認証が必要（無ければ 401）。他ユーザーのデータは 404。入力の形が不正なら 400、名称の重複・使用中の削除は 409。パスはすべて `/api` の下（例: `GET /api/me`）。
+
+| メソッド | パス                                | 内容                                                                                                                         |
+| -------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| GET      | `/me`                               | 自分のプロフィール。未登録なら 404（ようこそ画面へ）                                                                         |
+| PUT      | `/me`                               | プロフィールの登録・更新（氏名、氏名カナ、所属 `[{companyName, departmentName?}]`）                                          |
+| GET      | `/companies`                        | 会社・団体の一覧（名称順、名刺の枚数・部署の数付き）                                                                         |
+| POST     | `/companies`                        | 追加                                                                                                                         |
+| PATCH    | `/companies/:id`                    | 名称変更                                                                                                                     |
+| DELETE   | `/companies/:id`                    | 削除（使用中なら 409）                                                                                                       |
+| POST     | `/companies/:id/merge`              | `{ sourceIds }` を `:id` に統合                                                                                              |
+| GET      | `/companies/:companyId/departments` | 部署の一覧（名刺の枚数付き）                                                                                                 |
+| POST     | `/companies/:companyId/departments` | 追加                                                                                                                         |
+| PATCH    | `/departments/:id`                  | 名称変更                                                                                                                     |
+| DELETE   | `/departments/:id`                  | 削除（使用中なら 409）                                                                                                       |
+| POST     | `/departments/:id/merge`            | `{ sourceIds }` を `:id` に統合（同じ会社・団体の部署に限る）                                                                |
+| GET      | `/topics?kind=project\|group`       | 関連プロジェクト・関連グループの一覧                                                                                         |
+| POST     | `/images`                           | 名刺写真（multipart の `file`）をアップロードし `{ id }` を返す                                                              |
+| GET      | `/images/:id`                       | 名刺写真を返す                                                                                                               |
+| POST     | `/cards/extract`                    | `{ frontImageId, backImageId? }` から名刺記載項目を抽出する（保存しない）                                                    |
+| GET      | `/cards/candidates?name=`           | 氏名が一致する（空白は無視）登録済みの名刺（同一人物の候補）                                                                 |
+| GET      | `/cards?q=&topicIds=&match=`        | 名刺の一覧。`q` は全項目のテキスト検索、`topicIds` はカンマ区切り、`match` は `all`（既定）/ `any`。並び順は画面の一覧と同じ |
+| GET      | `/cards/:id`                        | 名刺の詳細                                                                                                                   |
+| POST     | `/cards`                            | 登録（会社・所属・トピックは名称で渡す。公開範囲は「個人」）                                                                 |
+| PATCH    | `/cards/:id`                        | 更新（渡した項目だけ、`null` で消去）。同一人物の上書きでは名刺写真と名刺記載項目だけを渡す                                  |
+| DELETE   | `/cards/:id`                        | 削除（写真も削除）                                                                                                           |
+
+統合（1 回のトランザクションで行う）:
+
+- 会社・団体: 統合元を参照する名刺・ユーザーの所属・部署を統合先に付け替え、統合元を削除する。付け替えた部署と同じ名称の部署が統合先にあれば、その部署同士も統合する。
+- 部署: 統合元を参照する名刺の所属・ユーザーの所属を統合先に付け替え（重複は除く）、統合元を削除する。

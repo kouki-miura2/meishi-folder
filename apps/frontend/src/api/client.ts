@@ -1,7 +1,11 @@
 import type { AppType } from 'backend/src/app.ts'
 import { hc } from 'hono/client'
 
-const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8787'
+// The API is served under /api on the frontend's own origin (the same Worker in production; the
+// dev server's proxy to `wrangler dev` locally). Tests run without a `location`.
+const baseUrl =
+  import.meta.env.VITE_API_BASE_URL ??
+  new URL('/api', globalThis.location?.origin ?? 'http://localhost').href
 const REQUEST_TIMEOUT_MS = 3_000
 /** AI extraction and photo upload take several seconds, far past the default timeout. */
 const LONG_REQUEST_TIMEOUT_MS = 60_000

@@ -15,6 +15,7 @@ import { createMasterResolver } from 'backend/src/service/master-resolver.ts'
 import { createTopicService } from 'backend/src/service/topic.service.ts'
 import { createUserService } from 'backend/src/service/user.service.ts'
 
+import { stripApiPrefix } from './api-path.ts'
 import { createCardExtractorDao } from './dao/card-extractor.workers-ai.ts'
 import { createCardImageDao } from './dao/card-image.r2.ts'
 import { createCardDao } from './dao/card.d1.ts'
@@ -73,6 +74,9 @@ const createWorkerApp = (env: WorkerEnv) => {
 // Bindings only exist per request, but they stay the same for the life of the isolate.
 let app: ReturnType<typeof createWorkerApp> | undefined
 
+// Only `/api/*` reaches this handler (`assets.run_worker_first` in wrangler.jsonc); every other
+// path is the frontend, served from static assets on the same origin.
 export default {
-  fetch: (request, env, ctx) => (app ??= createWorkerApp(env)).fetch(request, env, ctx),
+  fetch: (request, env, ctx) =>
+    (app ??= createWorkerApp(env)).fetch(stripApiPrefix(request), env, ctx),
 } satisfies ExportedHandler<WorkerEnv>
