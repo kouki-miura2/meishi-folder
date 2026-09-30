@@ -60,6 +60,43 @@ test('toExtractedCard drops blank values and empty offices', () => {
   })
 })
 
+test('toExtractedCard keeps a name in Japanese characters as read', () => {
+  const reply = JSON.stringify({ name: '名刺 太郎', nameRomaji: 'Taro Meishi' })
+
+  expect(toExtractedCard(reply)).toEqual({ ...empty, name: '名刺 太郎', nameRomaji: 'Taro Meishi' })
+})
+
+test('toExtractedCard joins the family and given names with one full-width space', () => {
+  const reply = JSON.stringify({
+    familyName: '山田',
+    givenName: '太郎',
+    familyNameKana: 'ヤマダ',
+    givenNameKana: 'タロウ',
+  })
+
+  expect(toExtractedCard(reply)).toEqual({
+    ...empty,
+    name: '山田　太郎',
+    nameKana: 'ヤマダ　タロウ',
+  })
+  // A name the model couldn't split is kept whole.
+  expect(toExtractedCard(JSON.stringify({ familyName: '山田太郎' }))).toEqual({
+    ...empty,
+    name: '山田太郎',
+  })
+})
+
+test('toExtractedCard moves a romanized name out of name into nameRomaji', () => {
+  expect(toExtractedCard(JSON.stringify({ name: 'Taro Meishi' }))).toEqual({
+    ...empty,
+    nameRomaji: 'Taro Meishi',
+  })
+  // The romaji the model read separately wins over the one it put in name.
+  expect(
+    toExtractedCard(JSON.stringify({ name: 'Taro Meishi', nameRomaji: 'MEISHI Taro' })),
+  ).toEqual({ ...empty, nameRomaji: 'MEISHI Taro' })
+})
+
 test.each(['not json at all', '{"name": broken', '[1, 2]', ''])(
   'toExtractedCard falls back to an empty card for %j',
   (reply) => {

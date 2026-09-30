@@ -1,29 +1,23 @@
-import { expect, test, vi } from 'vite-plus/test'
+import { expect, test } from 'vite-plus/test'
 
 import { createCardExtractorDao } from './card-extractor.workers-ai.ts'
 
-test('extract runs the vision model on the image bytes and returns its text reply', async () => {
-  const run = vi.fn(async () => ({ response: '{"name":"山田"}' }))
-  const dao = createCardExtractorDao({ run } as unknown as Ai)
+const image = { body: new Uint8Array([1, 2, 3]).buffer, content_type: 'image/jpeg' }
 
-  const reply = await dao.extract(
-    { body: new Uint8Array([1, 2]).buffer, content_type: 'image/jpeg' },
-    'read the card',
-  )
+const aiReplying = (response: unknown) => ({ run: async () => ({ response }) }) as unknown as Ai
 
-  expect(reply).toBe('{"name":"山田"}')
-  expect(run).toHaveBeenCalledWith('@cf/meta/llama-3.2-11b-vision-instruct', {
-    prompt: 'read the card',
-    image: [1, 2],
-    max_tokens: 1024,
-    temperature: 0,
-  })
+test('passes a text reply through', async () => {
+  const dao = createCardExtractorDao(aiReplying('{"name":"山田"}'))
+
+  expect(await dao.extract(image, 'prompt')).toBe('{"name":"山田"}')
 })
 
-test('extract returns an empty reply when the model gives none', async () => {
-  const dao = createCardExtractorDao({ run: async () => ({}) } as unknown as Ai)
+test('turns a reply Workers AI already parsed as JSON back into text', async () => {
+  const dao = createCardExtractorDao(aiReplying({ name: '山田', emails: [] }))
 
-  await expect(
-    dao.extract({ body: new ArrayBuffer(0), content_type: 'image/jpeg' }, 'prompt'),
-  ).resolves.toBe('')
+  expect(JSON.parse(await dao.extract(image, 'prompt'))).toEqual({ name: '山田', emails: [] })
+})
+
+test('an empty reply is empty text', async () => {
+  expect(await createCardExtractorDao(aiReplying(undefined)).extract(image, 'prompt')).toBe('')
 })
