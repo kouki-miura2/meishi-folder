@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/vue-query'
 import { useRouter } from 'vue-router'
 
 import { disableGoogleAutoSelect } from '../lib/google-identity.ts'
+import { forgetLastScene } from '../lib/last-scene.ts'
 import { useAuthStore } from '../stores/auth.ts'
 
 /**
@@ -15,6 +16,7 @@ export const useSignOut = () => {
   return async () => {
     disableGoogleAutoSelect()
     auth.signOut()
+    forgetLastScene()
     queryClient.clear()
     await router.replace({ name: 'login' })
   }

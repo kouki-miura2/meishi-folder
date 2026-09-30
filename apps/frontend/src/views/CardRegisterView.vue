@@ -29,6 +29,8 @@ import {
   validateCardForm,
 } from '../domain/card-form.ts'
 import { resizeImage, rotateImage } from '../lib/image.ts'
+import { rememberScene } from '../lib/last-scene.ts'
+import { backTo } from '../router/back.ts'
 import { useNotificationStore } from '../stores/notification.ts'
 
 // 1d–1g in one screen: capture → upload and AI extraction → confirm and correct → (same-person
@@ -161,6 +163,7 @@ const save = async () => {
       return
     }
     const card = await create.mutateAsync(toCreateInput(form.value, await images()))
+    rememberScene(form.value)
     await router.replace({ name: 'card', params: { id: card.id } })
   } finally {
     saving.value = false
@@ -177,6 +180,7 @@ const choose = async (choice: CandidateChoice) => {
             id: choice.cardId,
             input: toOverwriteInput(form.value, await images()),
           })
+    if (choice.mode === 'new') rememberScene(form.value)
     candidates.value = []
     await router.replace({ name: 'card', params: { id: card.id } })
   } finally {
@@ -186,7 +190,11 @@ const choose = async (choice: CandidateChoice) => {
 </script>
 
 <template>
-  <CameraCapture v-if="step === 'capture'" @done="start" @cancel="router.back()" />
+  <CameraCapture
+    v-if="step === 'capture'"
+    @done="start"
+    @cancel="backTo(router, { name: 'cards' })"
+  />
 
   <ExtractionProgress v-else-if="step === 'extracting'" :step="progress" @skip="skip" />
 
@@ -235,7 +243,7 @@ const choose = async (choice: CandidateChoice) => {
       </v-alert>
       <CardFormFields
         v-model="form"
-        :sections="['printed', 'scene', 'memo']"
+        :sections="['printed', 'scene', 'notes', 'memo']"
         :review="review"
         show-master-status
       />

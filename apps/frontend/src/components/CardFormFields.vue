@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { LIMITS, charLength } from 'utils'
-import { computed, toRaw } from 'vue'
+import { computed, ref, toRaw } from 'vue'
 
 import {
   useCompaniesQuery,
@@ -16,6 +16,7 @@ import {
   printedText,
 } from '../domain/card-form.ts'
 import { masterStatus } from '../domain/master-names.ts'
+import { type SceneField, loadLastScene } from '../lib/last-scene.ts'
 import PrintedChange from './PrintedChange.vue'
 import StringListField from './StringListField.vue'
 import TopicPicker from './TopicPicker.vue'
@@ -71,6 +72,22 @@ const reviewed = (field: ReviewField) => props.review.has(field)
 const changed = computed(() =>
   props.before ? changedPrintedFields(props.before, form.value) : new Set<PrintedField>(),
 )
+// While an empty scene field has focus, it offers the last saved card's value: cards from one
+// event are usually entered one after another.
+const sceneFields: { field: SceneField; label: string; placeholder?: string }[] = [
+  { field: 'metOn', label: '取得日' },
+  { field: 'metAt', label: '取得場所', placeholder: '例：東京ビッグサイト' },
+  { field: 'metOccasion', label: '取得機会', placeholder: '例：展示会、商談' },
+]
+const lastScene = loadLastScene()
+const focusedScene = ref<SceneField | null>(null)
+const sceneSuggestion = (field: SceneField) =>
+  focusedScene.value === field && !form.value[field].trim() ? lastScene[field] : undefined
+const onSceneFocus = (field: SceneField, focused: boolean) => {
+  if (focused) focusedScene.value = field
+  else if (focusedScene.value === field) focusedScene.value = null
+}
+
 const restore = (field: PrintedField) => {
   if (props.before) set(field, structuredClone(toRaw(props.before[field])))
 }
@@ -290,25 +307,28 @@ const restore = (field: PrintedField) => {
     <template v-if="has('scene')">
       <div class="section-title">場面</div>
       <div class="fields">
-        <v-text-field
-          :model-value="form.metOn"
-          label="取得日"
-          type="date"
-          class="mono"
-          @update:model-value="set('metOn', $event)"
-        />
-        <v-text-field
-          :model-value="form.metAt"
-          label="取得場所"
-          placeholder="例：東京ビッグサイト"
-          @update:model-value="set('metAt', $event)"
-        />
-        <v-text-field
-          :model-value="form.metOccasion"
-          label="取得機会"
-          placeholder="例：展示会、商談"
-          @update:model-value="set('metOccasion', $event)"
-        />
+        <div v-for="f in sceneFields" :key="f.field">
+          <v-text-field
+            :model-value="form[f.field]"
+            :label="f.label"
+            :placeholder="f.placeholder"
+            :type="f.field === 'metOn' ? 'date' : 'text'"
+            :class="{ mono: f.field === 'metOn' }"
+            @update:model-value="set(f.field, $event ?? '')"
+            @update:focused="onSceneFocus(f.field, $event)"
+          />
+          <!-- mousedown.prevent keeps the field focused, so the chip isn't gone before the tap. -->
+          <v-chip
+            v-if="sceneSuggestion(f.field)"
+            size="small"
+            prepend-icon="mdi-history"
+            class="mt-1"
+            @mousedown.prevent
+            @click="set(f.field, sceneSuggestion(f.field) ?? '')"
+          >
+            前回：{{ sceneSuggestion(f.field) }}
+          </v-chip>
+        </div>
       </div>
     </template>
 

@@ -30,6 +30,8 @@ import {
   validateCardForm,
 } from '../domain/card-form.ts'
 import { resizeImage, rotateImage } from '../lib/image.ts'
+import { rememberScene } from '../lib/last-scene.ts'
+import { backTo } from '../router/back.ts'
 import { useNotificationStore } from '../stores/notification.ts'
 
 // 1i: every field of a card, editable; plus deleting it. The photos can be turned 90° or retaken,
@@ -150,7 +152,8 @@ const save = async () => {
     id: props.id,
     input: { ...toUpdateInput(form.value), ...images.value },
   })
-  await router.replace({ name: 'card', params: { id: props.id } })
+  rememberScene(form.value)
+  await backTo(router, { name: 'card', params: { id: props.id } })
 }
 </script>
 
@@ -166,7 +169,9 @@ const save = async () => {
 
   <template v-else>
     <div class="top-bar">
-      <v-btn variant="text" class="muted" @click="router.back()">キャンセル</v-btn>
+      <v-btn variant="text" class="muted" @click="backTo(router, { name: 'card', params: { id } })"
+        >キャンセル</v-btn
+      >
       <span class="top-bar__title">編集</span>
       <v-btn
         color="primary"

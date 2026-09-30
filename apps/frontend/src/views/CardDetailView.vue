@@ -7,6 +7,7 @@ import DeleteCardDialog from '../components/DeleteCardDialog.vue'
 import ImageViewer from '../components/ImageViewer.vue'
 import TopicChips from '../components/TopicChips.vue'
 import { useCardQuery } from '../composables/useCards.ts'
+import { backTo } from '../router/back.ts'
 
 // 1h: a card, read-only. Tapping the photo opens the viewer (1j).
 const props = defineProps<{ id: string }>()
@@ -46,7 +47,12 @@ const visibilityLabel = { private: '個人', company: '会社', department: '部
 
 <template>
   <div class="top-bar border-0">
-    <v-btn icon="mdi-chevron-left" variant="text" aria-label="一覧へ戻る" @click="router.back()" />
+    <v-btn
+      icon="mdi-chevron-left"
+      variant="text"
+      aria-label="一覧へ戻る"
+      @click="backTo(router, { name: 'cards' })"
+    />
     <div class="d-flex ga-1 align-center">
       <v-btn
         variant="outlined"
