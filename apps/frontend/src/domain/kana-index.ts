@@ -67,3 +67,24 @@ export const groupByIndex = <T extends IndexedName>(cards: readonly T[]): IndexS
       .filter((card) => indexLabelOf(card) === label)
       .sort((a, b) => sortKeyOf(a).localeCompare(sortKeyOf(b), 'ja')),
   })).filter((section) => section.cards.length > 0)
+
+export interface AffiliatedName extends IndexedName {
+  companyName: string | null
+  departmentNames: string[]
+}
+
+const collate = (a: string, b: string) =>
+  a.normalize('NFKC').localeCompare(b.normalize('NFKC'), 'ja')
+
+/**
+ * The list in company order: company name, then departments, then the reading as in the kana order.
+ * Cards without a company come last. Names are compared as written (there is no reading for them).
+ */
+export const sortByCompany = <T extends AffiliatedName>(cards: readonly T[]): T[] =>
+  [...cards].sort(
+    (a, b) =>
+      Number(!a.companyName) - Number(!b.companyName) ||
+      collate(a.companyName ?? '', b.companyName ?? '') ||
+      collate(a.departmentNames.join('\n'), b.departmentNames.join('\n')) ||
+      sortKeyOf(a).localeCompare(sortKeyOf(b), 'ja'),
+  )

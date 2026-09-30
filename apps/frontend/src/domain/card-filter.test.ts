@@ -1,6 +1,12 @@
 import { expect, test } from 'vite-plus/test'
 
-import { emptyCardFilter, filterFromQuery, filterToQuery, toggleTopic } from './card-filter.ts'
+import {
+  emptyCardFilter,
+  filterFromQuery,
+  filterToQuery,
+  filterToRouteQuery,
+  toggleTopic,
+} from './card-filter.ts'
 
 test('an empty query is the empty filter, matching any topic', () => {
   expect(filterFromQuery({})).toEqual(emptyCardFilter())
@@ -11,30 +17,42 @@ test('filterFromQuery reads text, comma-separated topics and the match mode', ()
     q: '展示会',
     topicIds: ['t-1', 't-2'],
     match: 'all',
+    sort: 'name',
   })
 })
 
-test('filterFromQuery takes the first of repeated parameters and ignores unknown match values', () => {
-  expect(filterFromQuery({ q: ['a', 'b'], match: 'some' })).toEqual({
+test('filterFromQuery takes the first of repeated parameters and ignores unknown values', () => {
+  expect(filterFromQuery({ q: ['a', 'b'], match: 'some', sort: 'date' })).toEqual({
     q: 'a',
     topicIds: [],
     match: 'any',
+    sort: 'name',
   })
 })
 
-test('filterToQuery writes only what is in use', () => {
-  expect(filterToQuery({ q: '  ', topicIds: [], match: 'all' })).toEqual({})
-  expect(filterToQuery({ q: ' 展示会 ', topicIds: ['t-1'], match: 'any' })).toEqual({
+test('filterToQuery writes only what narrows the cards, not the order', () => {
+  expect(filterToQuery({ q: '  ', topicIds: [], match: 'all', sort: 'company' })).toEqual({})
+  expect(filterToQuery({ q: ' 展示会 ', topicIds: ['t-1'], match: 'any', sort: 'name' })).toEqual({
     q: '展示会',
     topicIds: 't-1',
     match: 'any',
   })
 })
 
-test('a filter survives the round trip through the URL', () => {
-  const filter = { q: '展示会', topicIds: ['t-1', 't-2'], match: 'all' as const }
+test('filterToRouteQuery adds the order, only when it is not the default', () => {
+  expect(filterToRouteQuery(emptyCardFilter())).toEqual({})
+  expect(filterToRouteQuery({ ...emptyCardFilter(), sort: 'company' })).toEqual({ sort: 'company' })
+})
 
-  expect(filterFromQuery(filterToQuery(filter))).toEqual(filter)
+test('a filter survives the round trip through the URL', () => {
+  const filter = {
+    q: '展示会',
+    topicIds: ['t-1', 't-2'],
+    match: 'all' as const,
+    sort: 'company' as const,
+  }
+
+  expect(filterFromQuery(filterToRouteQuery(filter))).toEqual(filter)
 })
 
 test('toggleTopic adds and removes a topic', () => {

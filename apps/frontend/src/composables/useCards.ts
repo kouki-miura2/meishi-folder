@@ -11,7 +11,8 @@ import { type CardFilter, filterToQuery } from '../domain/card-filter.ts'
 export const useCardsQuery = (filter: MaybeRefOrGetter<CardFilter>, queryClient?: QueryClient) =>
   useQuery(
     {
-      queryKey: ['cards', filter],
+      // Keyed by the API query only: changing the order re-sorts on screen without a refetch.
+      queryKey: ['cards', computed(() => filterToQuery(toValue(filter)))],
       queryFn: async () =>
         unwrap(await apiClient.cards.$get({ query: filterToQuery(toValue(filter)) })),
       placeholderData: keepPreviousData,

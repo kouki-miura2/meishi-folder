@@ -1,6 +1,6 @@
 import { expect, test } from 'vite-plus/test'
 
-import { groupByIndex, indexLabelOf, toKatakana } from './kana-index.ts'
+import { groupByIndex, indexLabelOf, sortByCompany, toKatakana } from './kana-index.ts'
 
 const card = (
   nameKana: string | null,
@@ -63,5 +63,34 @@ test('groupByIndex orders sections by the index and cards by reading within each
     ['サ', ['サトウ']],
     ['A', ['Alice']],
     ['#', ['佐藤']],
+  ])
+})
+
+test('sortByCompany orders by company, then departments, then reading; no company last', () => {
+  const affiliated = (
+    id: string,
+    companyName: string | null,
+    departmentNames: string[],
+    kana: string,
+  ) => ({
+    id,
+    companyName,
+    departmentNames,
+    ...card(kana),
+  })
+  const cards = [
+    affiliated('none', null, [], 'アオキ'),
+    affiliated('b-sales-2', 'ビー社', ['営業部'], 'ワダ'),
+    affiliated('a', 'エー社', ['開発部'], 'モリ'),
+    affiliated('b-dev', 'ビー社', ['開発部'], 'アベ'),
+    affiliated('b-sales-1', 'ビー社', ['営業部'], 'イトウ'),
+  ]
+
+  expect(sortByCompany(cards).map((c) => c.id)).toEqual([
+    'a',
+    'b-sales-1',
+    'b-sales-2',
+    'b-dev',
+    'none',
   ])
 })

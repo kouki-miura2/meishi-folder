@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/vue-query'
 import { afterEach, expect, test, vi } from 'vite-plus/test'
-import { effectScope, ref } from 'vue'
+import { effectScope, nextTick, ref } from 'vue'
 
 vi.mock('../api/client.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api/client.ts')>()),
@@ -34,19 +34,23 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-test('useCardsQuery sends only the filters in use, and refetches when they change', async () => {
+test('useCardsQuery sends only the filters in use, and refetches when they change (not the order)', async () => {
   vi.mocked(apiClient.cards.$get).mockResolvedValue(respond(200, []))
-  const filter = ref<CardFilter>({ q: '  ', topicIds: [], match: 'any' })
+  const filter = ref<CardFilter>({ q: '  ', topicIds: [], match: 'any', sort: 'name' })
   const { result, dispose } = run((client) => useCardsQuery(filter, client))
 
   await vi.waitFor(() => expect(result.isSuccess.value).toBe(true))
   expect(apiClient.cards.$get).toHaveBeenLastCalledWith({ query: {} })
 
-  filter.value = { q: ' 展示会 ', topicIds: ['t-1', 't-2'], match: 'any' }
+  filter.value = { q: ' 展示会 ', topicIds: ['t-1', 't-2'], match: 'any', sort: 'name' }
   await vi.waitFor(() => expect(apiClient.cards.$get).toHaveBeenCalledTimes(2))
   expect(apiClient.cards.$get).toHaveBeenLastCalledWith({
     query: { q: '展示会', topicIds: 't-1,t-2', match: 'any' },
   })
+
+  filter.value = { ...filter.value, sort: 'company' }
+  await nextTick()
+  expect(apiClient.cards.$get).toHaveBeenCalledTimes(2)
   dispose()
 })
 
