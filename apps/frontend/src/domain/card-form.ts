@@ -1,3 +1,5 @@
+import { LIMITS, charLength } from 'utils'
+
 import type {
   CardInput,
   CardUpdateInput,
@@ -233,6 +235,9 @@ export const validateCardForm = (form: CardForm): string[] => {
   }
   if (text(form.metOn) && !/^\d{4}-\d{2}-\d{2}$/.test(form.metOn.trim())) {
     errors.push('取得日は YYYY-MM-DD の形式で入力してください')
+  }
+  if (charLength(text(form.memo) ?? '') > LIMITS.textMaxLength) {
+    errors.push(`メモは ${LIMITS.textMaxLength} 字以内で入力してください`)
   }
   return errors
 }

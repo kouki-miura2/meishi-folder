@@ -2,7 +2,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { HTTPException } from 'hono/http-exception'
-import { createLogger } from 'utils'
+import { LIMITS, charLength, createLogger } from 'utils'
 import { z } from 'zod'
 
 import type { AuthGuard, AuthenticatedUser } from './repository/auth-guard.interface.ts'
@@ -59,13 +59,16 @@ const userIdOf = (c: Context<{ Variables: Variables }>): string => {
   return id
 }
 
-const MAX_BODY_BYTES = 10 * 1024 * 1024
-
-const text = z.string().max(1000)
+// Counted as a person sees characters (`charLength`), not UTF-16 code units, to match the UI.
+const text = z.string().refine((value) => charLength(value) <= LIMITS.textMaxLength, {
+  message: `Must be at most ${LIMITS.textMaxLength} characters`,
+})
 const optionalText = text.nullish()
-const texts = z.array(text).max(50).optional()
+const texts = z.array(text).max(LIMITS.valuesPerField).optional()
 const nameSchema = z.object({ name: text })
-const mergeSchema = z.object({ sourceIds: z.array(z.string()).min(1).max(100) })
+const mergeSchema = z.object({
+  sourceIds: z.array(z.string()).min(1).max(LIMITS.mergeSourcesPerRequest),
+})
 const cardFields = {
   name: optionalText,
   nameKana: optionalText,
@@ -87,7 +90,7 @@ const cardFields = {
         fax: optionalText,
       }),
     )
-    .max(20)
+    .max(LIMITS.officesPerCard)
     .optional(),
   metOn: z.iso.date().nullish(),
   metAt: optionalText,
@@ -139,12 +142,12 @@ export const createApp = (deps: AppDependencies) => {
         }
         await next()
       })
-      // Photos are 5MB at most (checked in the service); anything past 10MB is rejected before
-      // it is read into memory.
+      // Photos have their own, smaller cap (checked in the service); anything past this is
+      // rejected before it is read into memory.
       .use(
         '*',
         bodyLimit({
-          maxSize: MAX_BODY_BYTES,
+          maxSize: LIMITS.requestBodyBytes,
           onError: (c) => c.json({ error: 'Payload Too Large' }, 413),
         }),
       )
@@ -173,11 +176,16 @@ export const createApp = (deps: AppDependencies) => {
             nameKana: optionalText,
             affiliations: z
               .array(z.object({ companyName: text, departmentName: optionalText }))
-              .max(20),
+              .max(LIMITS.affiliationsPerUser),
           }),
         ),
         async (c) => c.json(await deps.userService.saveMe(userIdOf(c), c.req.valid('json'))),
       )
+      // Withdrawal (settings screen)
+      .delete('/me', async (c) => {
+        await deps.userService.deleteMe(userIdOf(c))
+        return c.body(null, 204)
+      })
 
       // Companies (company settings screen)
       .get('/companies', async (c) => c.json(await deps.companyService.list(userIdOf(c))))
@@ -277,6 +285,12 @@ export const createApp = (deps: AppDependencies) => {
           z.object({ frontImageId: z.string(), backImageId: z.string().nullish() }),
         ),
         async (c) => c.json(await deps.cardService.extract(userIdOf(c), c.req.valid('json'))),
+      )
+      .get('/cards/export', async (c) =>
+        c.body(await deps.cardService.exportCsv(userIdOf(c)), 200, {
+          'Content-Type': 'text/csv; charset=utf-8; header=present',
+          'Cache-Control': 'no-store',
+        }),
       )
       .get('/cards/candidates', zValidator('query', z.object({ name: text })), async (c) =>
         c.json(await deps.cardService.candidates(userIdOf(c), c.req.valid('query').name)),

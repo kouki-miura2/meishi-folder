@@ -196,3 +196,79 @@ test('list and candidates return summaries with master names', async () => {
   await expect(service.candidates('user-1', ' 山田 太郎 ')).resolves.toEqual([summary])
   await expect(service.candidates('user-1', ' ')).resolves.toEqual([])
 })
+
+test('exportCsv writes a header and one row per card, multi-values one per line', async () => {
+  const { service } = setup()
+  const { id, createdAt } = await service.create('user-1', {
+    ...registered,
+    titles: ['部長', 'CTO'],
+    memo: 'say "hi"',
+    offices: [
+      { postalCode: '100-0001', address: '東京都', tel: '03-0000-0000' },
+      { address: '大阪府' },
+    ],
+  })
+
+  const [header, row, end] = (await service.exportCsv('user-1')).slice(1).split('\r\n')
+
+  const cells = (line = '') =>
+    [...line.matchAll(/"((?:[^"]|"")*)"/g)].map(([, value = '']) => value.replaceAll('""', '"'))
+  const columns = cells(header)
+  expect(columns).toEqual([
+    'ID',
+    '氏名',
+    '氏名カナ',
+    '氏名ローマ字',
+    '会社・団体',
+    '部署',
+    '役職',
+    '職種',
+    '携帯',
+    'メール',
+    'その他連絡',
+    'URL',
+    ...['1', '2'].flatMap((n) =>
+      ['郵便番号', '住所', '電話', 'FAX'].map((column) => `事業所${n}_${column}`),
+    ),
+    '取得日',
+    '取得場所',
+    '取得機会',
+    '関連プロジェクト',
+    '関連グループ',
+    'ハンドルネーム',
+    'メモ',
+    '公開範囲',
+    '登録日時',
+    '更新日時',
+  ])
+  const values = Object.fromEntries(columns.map((column, i) => [column, cells(row)[i]]))
+  expect(values).toMatchObject({
+    ID: id,
+    氏名: '山田 太郎',
+    氏名カナ: '',
+    会社・団体: 'Acme',
+    部署: '営業部',
+    役職: '部長\nCTO',
+    事業所1_郵便番号: '100-0001',
+    事業所1_電話: '03-0000-0000',
+    事業所2_住所: '大阪府',
+    事業所2_電話: '',
+    取得場所: '展示会',
+    関連プロジェクト: 'Apollo',
+    関連グループ: 'Book club',
+    メモ: 'say "hi"',
+    公開範囲: '個人',
+    登録日時: createdAt,
+  })
+  expect(end).toBe('')
+})
+
+test('exportCsv without cards is the header alone, with one group of office columns', async () => {
+  const { service } = setup()
+
+  const csv = await service.exportCsv('user-1')
+
+  expect(csv.startsWith('﻿"ID","氏名"')).toBe(true)
+  expect(csv).toContain('"事業所1_FAX","取得日"')
+  expect(csv.split('\r\n')).toHaveLength(2)
+})

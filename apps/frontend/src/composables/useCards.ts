@@ -65,6 +65,19 @@ export const useDeleteCardMutation = (queryClient?: QueryClient) =>
     if (!res.ok) throw new ApiError(res.status, `Request failed: ${res.status}`)
   }, queryClient)
 
+/** Every card as a CSV file (`GET /cards/export`), for the settings screen's download. */
+export const useExportCardsMutation = (queryClient?: QueryClient) =>
+  useMutation(
+    {
+      mutationFn: async () => {
+        const res = await apiClient.cards.export.$get(undefined, longRequest())
+        if (!res.ok) throw new ApiError(res.status, `Request failed: ${res.status}`)
+        return res.blob()
+      },
+    },
+    queryClient ?? useQueryClient(),
+  )
+
 /** Uploads a photo. The photo goes into the image cache too, so showing it needs no download. */
 export const useUploadImageMutation = (queryClient?: QueryClient) => {
   const client = queryClient ?? useQueryClient()

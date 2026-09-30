@@ -23,6 +23,9 @@ export const fakeUserRepository = (users: User[] = []) =>
     save: async (user) => {
       users.splice(0, users.length, ...users.filter((u) => u.id !== user.id), user)
     },
+    deleteAll: async (id) => {
+      users.splice(0, users.length, ...users.filter((u) => u.id !== id))
+    },
   }) satisfies UserRepository & { users: User[] }
 
 export const fakeCompanyRepository = (companies: Company[] = []) => {
@@ -126,6 +129,7 @@ export const fakeCardImageRepository = (images = new Map<string, CardImage>()) =
     delete: async (_userId, ids) => {
       for (const id of ids) images.delete(id)
     },
+    deleteAll: async () => images.clear(),
     list: async () =>
       [...images.keys()].map((id) => ({
         userId: 'user-1',

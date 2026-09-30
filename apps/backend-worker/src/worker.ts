@@ -49,6 +49,7 @@ const createWorkerApp = (env: WorkerEnv) => {
       userRepository,
       companyRepository,
       departmentRepository,
+      cardImageRepository,
       masterResolver,
     }),
     companyService: createCompanyService(companyRepository),

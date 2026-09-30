@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { LIMITS, charLength } from 'utils'
 import { computed, toRaw } from 'vue'
 
 import {
@@ -345,8 +346,8 @@ const restore = (field: PrintedField) => {
         placeholder="自由に記入できます"
         auto-grow
         rows="3"
-        :maxlength="1000"
-        counter
+        :counter="LIMITS.textMaxLength"
+        :counter-value="charLength"
         @update:model-value="set('memo', $event)"
       />
     </template>

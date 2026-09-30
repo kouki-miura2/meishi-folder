@@ -1,8 +1,12 @@
+import { cardRecord } from 'backend/src/dao/fixtures.ts'
 import type { UserRecord } from 'backend/src/dao/user.interface.ts'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vite-plus/test'
 
+import { createCardDao } from './card.d1.ts'
 import { createCompanyDao } from './company.d1.ts'
+import { createDepartmentDao } from './department.d1.ts'
 import { createTestEnv } from './test-env.ts'
+import { createTopicDao } from './topic.d1.ts'
 import { createUserDao } from './user.d1.ts'
 
 let testEnv: Awaited<ReturnType<typeof createTestEnv>>
@@ -59,4 +63,56 @@ test('save replaces the profile and affiliations but keeps created_at', async ()
 
 test('findById resolves null for an unknown user', async () => {
   await expect(createUserDao(testEnv.env.DB).findById('missing')).resolves.toBeNull()
+})
+
+test('deleteAll removes every row the user owns and leaves other users alone', async () => {
+  const { DB } = testEnv.env
+  const dao = createUserDao(DB)
+  await dao.save(user)
+  for (const owner of ['user-1', 'user-2']) {
+    await createCompanyDao(DB).insert({ id: `${owner}-c`, user_id: owner, name: 'Gamma' })
+    await createDepartmentDao(DB).insert({
+      id: `${owner}-d`,
+      user_id: owner,
+      company_id: `${owner}-c`,
+      name: '営業部',
+    })
+    await createTopicDao(DB).insert({ id: `${owner}-t`, user_id: owner, kind: 'group', name: 'X' })
+    await createCardDao(DB).insert(
+      cardRecord({
+        id: `${owner}-card`,
+        user_id: owner,
+        company_id: `${owner}-c`,
+        department_ids: [`${owner}-d`],
+        topic_ids: [`${owner}-t`],
+      }),
+    )
+  }
+  await dao.save({
+    ...user,
+    id: 'user-2',
+    affiliations: [{ company_id: 'user-2-c', department_id: null }],
+  })
+
+  await dao.deleteAll('user-1')
+
+  const count = async (sql: string, owner: string) =>
+    (await DB.prepare(`SELECT COUNT(*) AS n FROM ${sql}`).bind(owner).first<{ n: number }>())?.n
+  const tables = [
+    'users WHERE id = ?',
+    'user_affiliations WHERE user_id = ?',
+    'companies WHERE user_id = ?',
+    'departments WHERE user_id = ?',
+    'topics WHERE user_id = ?',
+    'cards WHERE user_id = ?',
+    'card_departments WHERE card_id IN (SELECT id FROM cards WHERE user_id = ?)',
+    'card_topics WHERE card_id IN (SELECT id FROM cards WHERE user_id = ?)',
+  ]
+  for (const table of tables) {
+    expect(await count(table, 'user-1'), table).toBe(0)
+    expect(await count(table, 'user-2'), table).toBeGreaterThan(0)
+  }
+  // Link rows of the deleted cards are gone too, not just unreachable.
+  expect(await count('card_departments WHERE card_id = ?', 'user-1-card')).toBe(0)
+  expect(await count('card_topics WHERE card_id = ?', 'user-1-card')).toBe(0)
 })

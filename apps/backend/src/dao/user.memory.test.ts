@@ -1,5 +1,6 @@
 import { expect, test } from 'vite-plus/test'
 
+import { cardRecord } from './fixtures.ts'
 import { createMemoryStore } from './memory-store.ts'
 import type { UserRecord } from './user.interface.ts'
 import { createUserDao } from './user.memory.ts'
@@ -37,4 +38,29 @@ test('findById resolves null for an unknown user', async () => {
   const dao = createUserDao(createMemoryStore())
 
   await expect(dao.findById('missing')).resolves.toBeNull()
+})
+
+test('deleteAll removes the user and every row they own, leaving other users alone', async () => {
+  const store = createMemoryStore()
+  const dao = createUserDao(store)
+  for (const owner of ['user-1', 'user-2']) {
+    await dao.save({ ...user, id: owner })
+    store.companies.push({ id: `${owner}-c`, user_id: owner, name: 'Acme' })
+    store.departments.push({
+      id: `${owner}-d`,
+      user_id: owner,
+      company_id: `${owner}-c`,
+      name: '営業部',
+    })
+    store.topics.push({ id: `${owner}-t`, user_id: owner, kind: 'project', name: 'Apollo' })
+    store.cards.push(cardRecord({ id: `${owner}-card`, user_id: owner }))
+  }
+
+  await dao.deleteAll('user-1')
+
+  await expect(dao.findById('user-1')).resolves.toBeNull()
+  await expect(dao.findById('user-2')).resolves.not.toBeNull()
+  for (const table of [store.companies, store.departments, store.topics, store.cards]) {
+    expect(table.map((row) => row.user_id)).toEqual(['user-2'])
+  }
 })

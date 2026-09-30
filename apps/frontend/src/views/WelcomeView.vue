@@ -8,7 +8,7 @@ import { useCompaniesQuery } from '../composables/useMasters.ts'
 import { useMeQuery, useSaveMeMutation } from '../composables/useMe.ts'
 import { useAuthStore } from '../stores/auth.ts'
 
-// 1a: the first-time profile, and later the place to change it (from the account menu).
+// 1a: the first-time profile, and later the place to change it (from the settings screen).
 const auth = useAuthStore()
 const router = useRouter()
 const { data: me } = useMeQuery()
@@ -39,6 +39,8 @@ const isFirstTime = computed(() => me.value === null)
 const canSave = computed(() => !!name.value.trim())
 
 const submit = async () => {
+  // Saving fills the profile cache, so read this first.
+  const next = isFirstTime.value ? 'cards' : 'settings'
   await save.mutateAsync({
     name: name.value,
     nameKana: nameKana.value || null,
@@ -46,7 +48,7 @@ const submit = async () => {
       .filter((a) => a.companyName.trim())
       .map((a) => ({ companyName: a.companyName, departmentName: a.departmentName || null })),
   })
-  await router.replace({ name: 'cards' })
+  await router.replace({ name: next })
 }
 </script>
 

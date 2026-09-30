@@ -33,4 +33,19 @@ export const createUserDao = (db: D1Database): UserDao => ({
       ),
     ])
   },
+  // Children before parents: the foreign keys are enforced.
+  deleteAll: async (id) => {
+    await db.batch(
+      [
+        'DELETE FROM card_departments WHERE card_id IN (SELECT id FROM cards WHERE user_id = ?)',
+        'DELETE FROM card_topics WHERE card_id IN (SELECT id FROM cards WHERE user_id = ?)',
+        'DELETE FROM cards WHERE user_id = ?',
+        'DELETE FROM user_affiliations WHERE user_id = ?',
+        'DELETE FROM users WHERE id = ?',
+        'DELETE FROM topics WHERE user_id = ?',
+        'DELETE FROM departments WHERE user_id = ?',
+        'DELETE FROM companies WHERE user_id = ?',
+      ].map((sql) => db.prepare(sql).bind(id)),
+    )
+  },
 })

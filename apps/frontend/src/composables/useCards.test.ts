@@ -5,14 +5,19 @@ import { effectScope, ref } from 'vue'
 vi.mock('../api/client.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api/client.ts')>()),
   apiClient: {
-    cards: { $get: vi.fn(), extract: { $post: vi.fn() } },
+    cards: { $get: vi.fn(), extract: { $post: vi.fn() }, export: { $get: vi.fn() } },
     images: { ':id': { $get: vi.fn() } },
   },
 }))
 
 import { apiClient } from '../api/client.ts'
 import type { CardFilter } from '../domain/card-filter.ts'
-import { useCardImageUrl, useCardsQuery, useExtractCardMutation } from './useCards.ts'
+import {
+  useCardImageUrl,
+  useCardsQuery,
+  useExportCardsMutation,
+  useExtractCardMutation,
+} from './useCards.ts'
 
 const respond = (status: number, body: unknown = {}) =>
   ({ ok: status < 400, status, json: async () => body, blob: async () => new Blob(['x']) }) as never
@@ -77,5 +82,16 @@ test('useCardImageUrl stays idle without an image', () => {
 
   expect(result.url.value).toBeNull()
   expect(apiClient.images[':id'].$get).not.toHaveBeenCalled()
+  dispose()
+})
+
+test('useExportCardsMutation resolves the CSV as a blob and fails on an error status', async () => {
+  vi.mocked(apiClient.cards.export.$get).mockResolvedValueOnce(respond(200))
+  const { result, dispose } = run((client) => useExportCardsMutation(client))
+
+  await expect(result.mutateAsync()).resolves.toBeInstanceOf(Blob)
+
+  vi.mocked(apiClient.cards.export.$get).mockResolvedValueOnce(respond(500))
+  await expect(result.mutateAsync()).rejects.toMatchObject({ status: 500 })
   dispose()
 })

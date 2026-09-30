@@ -22,22 +22,47 @@ const user: User = {
 }
 
 test('findById maps the storage record to the domain entity', async () => {
-  const dao: UserDao = { findById: async () => record, save: async () => {} }
+  const dao: UserDao = {
+    findById: async () => record,
+    save: async () => {},
+    deleteAll: async () => {},
+  }
 
   await expect(createUserRepository(dao).findById('user-1')).resolves.toEqual(user)
 })
 
 test('findById resolves null when the DAO finds nothing', async () => {
-  const dao: UserDao = { findById: async () => null, save: async () => {} }
+  const dao: UserDao = {
+    findById: async () => null,
+    save: async () => {},
+    deleteAll: async () => {},
+  }
 
   await expect(createUserRepository(dao).findById('missing')).resolves.toBeNull()
 })
 
 test('save maps the domain entity back to the storage record', async () => {
   const saved: UserRecord[] = []
-  const dao: UserDao = { findById: async () => null, save: async (r) => void saved.push(r) }
+  const dao: UserDao = {
+    findById: async () => null,
+    save: async (r) => void saved.push(r),
+    deleteAll: async () => {},
+  }
 
   await createUserRepository(dao).save(user)
 
   expect(saved).toEqual([record])
+})
+
+test('deleteAll hands the user id to the DAO', async () => {
+  const deleted: string[] = []
+  const dao: UserDao = {
+    findById: async () => null,
+    save: async () => {},
+    deleteAll: async (id) => void deleted.push(id),
+  }
+
+  await createUserRepository(dao).deleteAll('user-1')
+
+  expect(deleted).toEqual(['user-1'])
 })

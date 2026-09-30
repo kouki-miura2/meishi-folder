@@ -1,8 +1,7 @@
+import { LIMITS } from 'utils'
+
 import type { CardImage, CardImageRepository } from '../repository/card-image.repository.ts'
 import { ServiceError } from './errors.ts'
-
-/** Photos are expected to be downscaled on the client first; this only stops accidental originals. */
-export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 const signatures: { type: string; bytes: (number | null)[] }[] = [
   { type: 'image/jpeg', bytes: [0xff, 0xd8, 0xff] },
@@ -36,7 +35,8 @@ export const createCardImageService = (repository: CardImageRepository): CardIma
     if (!contentType) {
       throw new ServiceError('invalid', 'Unsupported image type: only JPEG, PNG and WebP')
     }
-    if (body.byteLength > MAX_IMAGE_BYTES) {
+    // Photos are expected to be downscaled on the client first; this only stops accidental originals.
+    if (body.byteLength > LIMITS.imageBytes) {
       throw new ServiceError('invalid', 'Image is too large')
     }
     const id = crypto.randomUUID()

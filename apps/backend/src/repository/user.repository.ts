@@ -17,6 +17,8 @@ export interface User {
 export interface UserRepository {
   findById: (id: string) => Promise<User | null>
   save: (user: User) => Promise<void>
+  /** Deletes the user and every row they own (see `UserDao.deleteAll`). */
+  deleteAll: (id: string) => Promise<void>
 }
 
 const toUser = (record: UserRecord): User => ({
@@ -48,4 +50,5 @@ export const createUserRepository = (dao: UserDao): UserRepository => ({
         department_id: a.departmentId,
       })),
     }),
+  deleteAll: dao.deleteAll,
 })

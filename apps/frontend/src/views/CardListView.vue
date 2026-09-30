@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { LIMITS } from 'utils'
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -35,7 +36,7 @@ const search = ref(filter.value.q)
 let timer: ReturnType<typeof setTimeout> | undefined
 watch(search, (q) => {
   clearTimeout(timer)
-  timer = setTimeout(() => setFilter({ ...filter.value, q: q ?? '' }), 300)
+  timer = setTimeout(() => setFilter({ ...filter.value, q: q ?? '' }), LIMITS.searchDebounceMs)
 })
 watch(
   () => filter.value.q,

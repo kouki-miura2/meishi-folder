@@ -1,0 +1,133 @@
+<script setup lang="ts">
+import { formatDate } from 'utils'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+import { useExportCardsMutation } from '../composables/useCards.ts'
+import { useDeleteMeMutation } from '../composables/useMe.ts'
+import { useSignOut } from '../composables/useSignOut.ts'
+import { saveFile } from '../lib/download.ts'
+import { useAuthStore } from '../stores/auth.ts'
+
+// Settings (not in the design): profile and masters, the CSV export, outside pages, withdrawal.
+const auth = useAuthStore()
+const router = useRouter()
+const exportCards = useExportCardsMutation()
+const deleteMe = useDeleteMeMutation()
+const signOut = useSignOut()
+
+// Pages still to be written: a row stays disabled until its url is set.
+const links: { title: string; url: string | null }[] = [
+  { title: 'ヘルプ', url: null },
+  { title: '利用規約', url: null },
+  { title: 'プライバシーポリシー', url: null },
+]
+
+const withdrawing = ref(false)
+
+const download = async () => {
+  const csv = await exportCards.mutateAsync()
+  saveFile(csv, `meishi-folder-${formatDate(new Date(), 'yyyyMMdd')}.csv`)
+}
+
+const withdraw = async () => {
+  await deleteMe.mutateAsync()
+  withdrawing.value = false
+  await signOut()
+}
+</script>
+
+<template>
+  <div class="top-bar border-0">
+    <v-btn
+      variant="text"
+      prepend-icon="mdi-chevron-left"
+      class="px-2"
+      @click="router.push({ name: 'cards' })"
+    >
+      名刺
+    </v-btn>
+  </div>
+  <div class="page">
+    <h1 class="page-title mb-4">設定</h1>
+
+    <v-list class="panel py-0 mb-4">
+      <v-list-item :title="auth.profile?.name" :subtitle="auth.profile?.email">
+        <template #prepend>
+          <v-avatar size="40" color="#D9D4C7" class="mr-1">
+            <v-img v-if="auth.profile?.picture" :src="auth.profile.picture" alt="" />
+            <v-icon v-else icon="mdi-account" />
+          </v-avatar>
+        </template>
+      </v-list-item>
+      <v-divider />
+      <v-list-item
+        prepend-icon="mdi-account-edit-outline"
+        append-icon="mdi-chevron-right"
+        title="プロフィール・所属"
+        :to="{ name: 'welcome' }"
+      />
+      <v-divider />
+      <v-list-item
+        prepend-icon="mdi-domain"
+        append-icon="mdi-chevron-right"
+        title="会社・団体の設定"
+        :to="{ name: 'companies' }"
+      />
+    </v-list>
+
+    <v-list class="panel py-0 mb-4">
+      <v-list-item
+        prepend-icon="mdi-download-outline"
+        title="名刺データをダウンロード"
+        subtitle="CSV ファイル。他のアプリへの移行に使えます"
+        :disabled="exportCards.isPending.value"
+        @click="download"
+      >
+        <template v-if="exportCards.isPending.value" #append>
+          <v-progress-circular indeterminate size="20" width="2" />
+        </template>
+      </v-list-item>
+    </v-list>
+
+    <v-list class="panel py-0">
+      <template v-for="link in links" :key="link.title">
+        <v-list-item
+          :title="link.title"
+          append-icon="mdi-open-in-new"
+          :href="link.url ?? undefined"
+          target="_blank"
+          rel="noopener"
+          :disabled="!link.url"
+        />
+        <v-divider />
+      </template>
+      <v-list-item
+        title="退会する（すべてのデータを削除）"
+        base-color="error"
+        class="withdraw"
+        @click="withdrawing = true"
+      />
+    </v-list>
+  </div>
+
+  <v-dialog v-model="withdrawing" max-width="360">
+    <v-card title="退会しますか？">
+      <v-card-text>
+        名刺・名刺写真・会社・団体・プロフィールなど、すべてのデータを削除します。元に戻せません。<br />
+        必要なら先に「名刺データをダウンロード」で CSV を保存してください。
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="text" @click="withdrawing = false">キャンセル</v-btn>
+        <v-btn color="error" :loading="deleteMe.isPending.value" @click="withdraw">退会する</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</template>
+
+<style scoped>
+.withdraw {
+  background: rgba(var(--v-theme-error), 0.06);
+}
+</style>

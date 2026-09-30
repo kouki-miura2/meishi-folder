@@ -25,6 +25,15 @@ export const createCardImageDao = (bucket: R2Bucket): CardImageDao => ({
       await bucket.delete(ids.slice(i, i + DELETE_BATCH).map((id) => keyOf(userId, id)))
     }
   },
+  // A list page holds at most 1000 keys, so each page is one delete call.
+  deleteAll: async (userId) => {
+    let cursor: string | undefined
+    do {
+      const page = await bucket.list({ prefix: keyOf(userId, ''), cursor })
+      if (page.objects.length > 0) await bucket.delete(page.objects.map((object) => object.key))
+      cursor = page.truncated ? page.cursor : undefined
+    } while (cursor)
+  },
   list: async () => {
     const entries = []
     let cursor: string | undefined

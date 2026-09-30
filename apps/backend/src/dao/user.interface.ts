@@ -17,4 +17,9 @@ export interface UserDao {
   findById: (id: string) => Promise<UserRecord | null>
   /** Inserts or replaces the user, affiliations included. */
   save: (record: UserRecord) => Promise<void>
+  /**
+   * Withdrawal: deletes the user and every row they own (affiliations, companies, departments,
+   * topics, cards and their links) in one transaction. Photos are the card image DAO's to delete.
+   */
+  deleteAll: (id: string) => Promise<void>
 }

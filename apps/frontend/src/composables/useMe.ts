@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/vue-query'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 
-import { apiClient, unwrap } from '../api/client.ts'
+import { ApiError, apiClient, unwrap } from '../api/client.ts'
 import type { SaveMeInput } from '../api/types.ts'
 
 /** The signed-in user's profile, or `null` until the welcome screen has saved one (the API's 404). */
@@ -33,3 +33,15 @@ export const useSaveMeMutation = (queryClient?: QueryClient) => {
     client,
   )
 }
+
+/** Withdrawal: deletes all of the user's data. The caller signs out afterwards. */
+export const useDeleteMeMutation = (queryClient?: QueryClient) =>
+  useMutation(
+    {
+      mutationFn: async () => {
+        const res = await apiClient.me.$delete()
+        if (!res.ok) throw new ApiError(res.status, `Request failed: ${res.status}`)
+      },
+    },
+    queryClient ?? useQueryClient(),
+  )

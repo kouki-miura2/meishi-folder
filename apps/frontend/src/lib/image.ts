@@ -1,4 +1,5 @@
-const MAX_EDGE = 1600
+import { LIMITS } from 'utils'
+
 const JPEG_QUALITY = 0.85
 
 const toJpeg = (canvas: HTMLCanvasElement, quality: number) =>
@@ -11,13 +12,13 @@ const toJpeg = (canvas: HTMLCanvasElement, quality: number) =>
   )
 
 /**
- * Shrinks a photo to at most 1600px on its long edge, as JPEG. A phone photo is several MB; this
- * brings it well under the API's 5MB limit and keeps upload and AI extraction fast, while still
+ * Shrinks a photo to at most `LIMITS.imageLongEdgePx` on its long edge, as JPEG. A phone photo is
+ * several MB; this brings it well under the API's `LIMITS.imageBytes` and keeps upload and AI extraction fast, while still
  * leaving small print on a business card legible.
  */
 export const resizeImage = async (source: Blob, name: string): Promise<File> => {
   const bitmap = await createImageBitmap(source, { imageOrientation: 'from-image' })
-  const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height))
+  const scale = Math.min(1, LIMITS.imageLongEdgePx / Math.max(bitmap.width, bitmap.height))
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(bitmap.width * scale)
   canvas.height = Math.round(bitmap.height * scale)

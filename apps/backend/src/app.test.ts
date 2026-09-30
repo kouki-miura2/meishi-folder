@@ -1,3 +1,4 @@
+import { LIMITS } from 'utils'
 import { expect, test, vi } from 'vite-plus/test'
 
 import { createApp, type AppDependencies } from './app.ts'
@@ -16,7 +17,11 @@ const denyAllGuard: AuthGuard = { authenticate: async () => null }
 const notImplemented = () => {
   throw new Error('not expected in this test')
 }
-const userService: UserService = { getMe: notImplemented, saveMe: notImplemented }
+const userService: UserService = {
+  getMe: notImplemented,
+  saveMe: notImplemented,
+  deleteMe: notImplemented,
+}
 const companyService: CompanyService = {
   list: notImplemented,
   create: notImplemented,
@@ -41,6 +46,7 @@ const cardService: CardService = {
   create: notImplemented,
   update: notImplemented,
   remove: notImplemented,
+  exportCsv: notImplemented,
 }
 
 /** An app whose services all throw unless a test overrides the ones it exercises. */
@@ -177,7 +183,7 @@ test('answers 500 without leaking an unexpected error', async () => {
 test('GET /me and PUT /me pass the signed-in user to the service', async () => {
   const view = { name: '山田', nameKana: null, affiliations: [] }
   const saveMe = vi.fn(async () => view)
-  const app = appWith({ userService: { getMe: async () => view, saveMe } })
+  const app = appWith({ userService: { ...userService, getMe: async () => view, saveMe } })
 
   const got = await app.request('/me')
   const put = await app.request('/me', json('PUT', { name: '山田', affiliations: [] }))
@@ -185,6 +191,29 @@ test('GET /me and PUT /me pass the signed-in user to the service', async () => {
   expect(await got.json()).toEqual(view)
   expect(await put.json()).toEqual(view)
   expect(saveMe).toHaveBeenCalledWith('test-user', { name: '山田', affiliations: [] })
+})
+
+test('DELETE /me withdraws the signed-in user with 204', async () => {
+  const deleteMe = vi.fn(async () => {})
+  const app = appWith({ userService: { ...userService, deleteMe } })
+
+  const res = await app.request('/me', { method: 'DELETE' })
+
+  expect(res.status).toBe(204)
+  expect(deleteMe).toHaveBeenCalledWith('test-user')
+})
+
+test('GET /cards/export returns the CSV as text/csv, not a card lookup', async () => {
+  const exportCsv = vi.fn(async () => '"ID"\r\n')
+  const app = appWith({ cardService: { ...cardService, exportCsv } })
+
+  const res = await app.request('/cards/export')
+
+  expect(res.status).toBe(200)
+  expect(res.headers.get('content-type')).toMatch(/^text\/csv; charset=utf-8/)
+  expect(res.headers.get('cache-control')).toBe('no-store')
+  expect(await res.text()).toBe('"ID"\r\n')
+  expect(exportCsv).toHaveBeenCalledWith('test-user')
 })
 
 test('PUT /me rejects a malformed body with 400 before reaching the service', async () => {
@@ -300,11 +329,26 @@ test('POST /images rejects a request without a file', async () => {
   expect(res.status).toBe(400)
 })
 
-test('requests with a body over 10MB are rejected with 413 before reaching the service', async () => {
+test('text values are capped by visible characters, not UTF-16 code units', async () => {
+  const create = vi.fn(async (_userId: string, name: string) => ({ id: 'c-1', name }))
+  const app = appWith({ companyService: { ...companyService, create } })
+  const post = (name: string) =>
+    app.request('/companies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+
+  // Each family emoji is 8 UTF-16 code units but one character.
+  expect((await post('👨‍👩‍👧'.repeat(LIMITS.textMaxLength))).status).toBe(201)
+  expect((await post('あ'.repeat(LIMITS.textMaxLength + 1))).status).toBe(400)
+})
+
+test('requests with a body over the limit are rejected with 413 before reaching the service', async () => {
   const upload = vi.fn(async () => ({ id: 'img-1' }))
   const app = appWith({ cardImageService: { upload, get: vi.fn() } })
   const form = new FormData()
-  form.append('file', new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'card.png'))
+  form.append('file', new File([new Uint8Array(LIMITS.requestBodyBytes + 1)], 'card.png'))
 
   const res = await app.request('/images', { method: 'POST', body: form })
 
@@ -331,6 +375,7 @@ test('card routes map to the service with the right statuses', async () => {
     create: vi.fn(async () => view),
     update: vi.fn(async () => view),
     remove: vi.fn(async () => {}),
+    exportCsv: vi.fn(async () => ''),
   }
   const app = appWith({ cardService: service })
 

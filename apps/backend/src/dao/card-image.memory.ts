@@ -10,6 +10,11 @@ export const createCardImageDao = (store: MemoryStore): CardImageDao => ({
   delete: async (userId, ids) => {
     for (const id of ids) store.images.delete(`${userId}/${id}`)
   },
+  deleteAll: async (userId) => {
+    for (const key of store.images.keys()) {
+      if (key.startsWith(`${userId}/`)) store.images.delete(key)
+    }
+  },
   list: async () =>
     [...store.images].map(([key, { uploaded_at }]) => {
       const [user_id = '', id = ''] = key.split('/')

@@ -1,3 +1,4 @@
+import type { CardImageRepository } from '../repository/card-image.repository.ts'
 import type { CompanyRepository } from '../repository/company.repository.ts'
 import type { DepartmentRepository } from '../repository/department.repository.ts'
 import type { Affiliation, User, UserRepository } from '../repository/user.repository.ts'
@@ -31,12 +32,15 @@ export interface UserService {
   /** The signed-in user's profile; not found until the welcome screen has saved one. */
   getMe: (userId: string) => Promise<UserView>
   saveMe: (userId: string, input: UserInput) => Promise<UserView>
+  /** Withdrawal: deletes everything the user has, photos included. Succeeds without a profile too. */
+  deleteMe: (userId: string) => Promise<void>
 }
 
 export interface UserServiceDependencies {
   userRepository: UserRepository
   companyRepository: CompanyRepository
   departmentRepository: DepartmentRepository
+  cardImageRepository: CardImageRepository
   masterResolver: MasterResolver
 }
 
@@ -44,6 +48,7 @@ export const createUserService = ({
   userRepository,
   companyRepository,
   departmentRepository,
+  cardImageRepository,
   masterResolver,
 }: UserServiceDependencies): UserService => {
   const toView = async (user: User): Promise<UserView> => {
@@ -104,6 +109,12 @@ export const createUserService = ({
       }
       await userRepository.save(user)
       return toView(user)
+    },
+    deleteMe: async (userId) => {
+      // Rows first: should the photos then fail, no card points at them any more and the daily
+      // sweep of unused photos removes them.
+      await userRepository.deleteAll(userId)
+      await cardImageRepository.deleteAll(userId)
     },
   }
 }

@@ -16,6 +16,7 @@ export interface CardImageRepository {
   get: (userId: string, id: string) => Promise<CardImage | null>
   exists: (userId: string, id: string) => Promise<boolean>
   delete: (userId: string, ids: string[]) => Promise<void>
+  deleteAll: (userId: string) => Promise<void>
   /** Every stored photo of every user: only for sweeping out photos no card uses. */
   list: () => Promise<CardImageEntry[]>
 }
@@ -34,6 +35,7 @@ export const createCardImageRepository = (dao: CardImageDao): CardImageRepositor
   },
   exists: dao.exists,
   delete: dao.delete,
+  deleteAll: dao.deleteAll,
   list: async () =>
     (await dao.list()).map((entry) => ({
       userId: entry.user_id,

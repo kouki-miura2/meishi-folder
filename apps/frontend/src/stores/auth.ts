@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { LIMITS } from 'utils'
 import { computed, ref } from 'vue'
 
 /** What the app shows about the signed-in Google account (from the ID token's claims). */
@@ -11,8 +12,6 @@ export interface GoogleProfile {
 }
 
 const STORAGE_KEY = 'meishi-folder.idToken'
-// Treat a token as gone a little early, so a request never leaves with one about to expire.
-const EXPIRY_MARGIN_SECONDS = 60
 
 /** Decodes a JWT's payload (base64url JSON, UTF-8 so Japanese names survive). No signature check: the backend does that. */
 export const decodeIdToken = (token: string): GoogleProfile | null => {
@@ -56,9 +55,12 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(readStored())
   const profile = computed(() => (token.value ? decodeIdToken(token.value) : null))
 
-  /** A time check, not a computed: it has to be re-evaluated at the moment of each request. */
+  /**
+   * A time check, not a computed: it has to be re-evaluated at the moment of each request. Treats a
+   * token as gone a little early, so a request never leaves with one about to expire.
+   */
   const hasValidToken = (now = Date.now()) =>
-    !!profile.value && profile.value.expiresAt - EXPIRY_MARGIN_SECONDS > now / 1000
+    !!profile.value && profile.value.expiresAt - LIMITS.tokenExpiryMarginSeconds > now / 1000
 
   const signIn = (idToken: string) => {
     if (!decodeIdToken(idToken)) return false

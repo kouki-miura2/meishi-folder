@@ -44,3 +44,18 @@ test('list returns every stored photo with its owner and upload time', async () 
   await dao.delete('user-1', ['img-a'])
   await dao.delete('user-2', ['img-b'])
 })
+
+test('deleteAll removes every photo of the user and no one else', async () => {
+  const dao = createCardImageDao(testEnv.env.IMAGES)
+  const body = new Uint8Array([1]).buffer
+  await dao.put('user-1', 'img-a', { body, content_type: 'image/jpeg' })
+  await dao.put('user-1', 'img-b', { body, content_type: 'image/jpeg' })
+  await dao.put('user-10', 'img-c', { body, content_type: 'image/jpeg' })
+
+  await dao.deleteAll('user-1')
+
+  expect((await dao.list()).map(({ user_id, id }) => ({ user_id, id }))).toEqual([
+    { user_id: 'user-10', id: 'img-c' },
+  ])
+  await dao.delete('user-10', ['img-c'])
+})

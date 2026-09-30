@@ -32,3 +32,16 @@ test('list returns every stored photo with its owner and upload time', async () 
   ])
   expect(Number.isNaN(Date.parse(entries[0]?.uploaded_at ?? ''))).toBe(false)
 })
+
+test('deleteAll removes every photo of the user and no one else', async () => {
+  const dao = createCardImageDao(createMemoryStore())
+  await dao.put('user-1', 'img-1', image)
+  await dao.put('user-1', 'img-2', image)
+  await dao.put('user-10', 'img-3', image)
+
+  await dao.deleteAll('user-1')
+
+  expect((await dao.list()).map(({ user_id, id }) => ({ user_id, id }))).toEqual([
+    { user_id: 'user-10', id: 'img-3' },
+  ])
+})

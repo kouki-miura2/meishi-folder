@@ -2,6 +2,7 @@ import { expect, test } from 'vite-plus/test'
 
 import { ServiceError } from './errors.ts'
 import {
+  fakeCardImageRepository,
   fakeCompanyRepository,
   fakeDepartmentRepository,
   fakeTopicRepository,
@@ -14,17 +15,21 @@ const setup = () => {
   const userRepository = fakeUserRepository()
   const companyRepository = fakeCompanyRepository([{ id: 'c-1', name: 'Acme' }])
   const departmentRepository = fakeDepartmentRepository()
+  const cardImageRepository = fakeCardImageRepository(
+    new Map([['img-1', { body: new ArrayBuffer(1), contentType: 'image/jpeg' }]]),
+  )
   const service = createUserService({
     userRepository,
     companyRepository,
     departmentRepository,
+    cardImageRepository,
     masterResolver: createMasterResolver({
       companyRepository,
       departmentRepository,
       topicRepository: fakeTopicRepository(),
     }),
   })
-  return { service, userRepository, companyRepository, departmentRepository }
+  return { service, userRepository, companyRepository, departmentRepository, cardImageRepository }
 }
 
 test('getMe reports not_found until a profile is saved', async () => {
@@ -82,4 +87,20 @@ test.each([
 
   await expect(result).rejects.toBeInstanceOf(ServiceError)
   await expect(result).rejects.toMatchObject({ code: 'invalid' })
+})
+
+test('deleteMe deletes the profile and every photo, leaving the user to start over', async () => {
+  const { service, cardImageRepository } = setup()
+  await service.saveMe('user-1', { name: '山田 太郎', affiliations: [] })
+
+  await service.deleteMe('user-1')
+
+  await expect(service.getMe('user-1')).rejects.toMatchObject({ code: 'not_found' })
+  expect(cardImageRepository.images.size).toBe(0)
+})
+
+test('deleteMe succeeds for a user who never saved a profile', async () => {
+  const { service } = setup()
+
+  await expect(service.deleteMe('user-1')).resolves.toBeUndefined()
 })

@@ -12,6 +12,7 @@ test('put and get map the content type between storage and domain shapes', async
     get: async (userId, id) => stored.get(`${userId}/${id}`) ?? null,
     exists: async () => false,
     delete: async () => {},
+    deleteAll: async () => {},
     list: async () => [],
   }
   const repository = createCardImageRepository(dao)
@@ -32,6 +33,7 @@ test('list maps each entry to the domain shape, with the upload time as a Date',
     get: async () => null,
     exists: async () => false,
     delete: async () => {},
+    deleteAll: async () => {},
     list: async () => [{ user_id: 'user-1', id: 'img-1', uploaded_at: '2026-09-30T00:00:00.000Z' }],
   })
 

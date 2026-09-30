@@ -1,14 +1,12 @@
 import type { AppType } from 'backend/src/app.ts'
 import { hc } from 'hono/client'
+import { LIMITS } from 'utils'
 
 // The API is served under /api on the frontend's own origin (the same Worker in production; the
 // dev server's proxy to `wrangler dev` locally). Tests run without a `location`.
 const baseUrl =
   import.meta.env.VITE_API_BASE_URL ??
   new URL('/api', globalThis.location?.origin ?? 'http://localhost').href
-const REQUEST_TIMEOUT_MS = 3_000
-/** AI extraction and photo upload take several seconds, far past the default timeout. */
-const LONG_REQUEST_TIMEOUT_MS = 60_000
 
 interface ApiClientConfig {
   /** The Google ID token to send, or null when signed out. */
@@ -33,7 +31,7 @@ export const apiClient = hc<AppType>(baseUrl, {
   fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
     const res = await fetch(input, {
       ...init,
-      signal: init?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: init?.signal ?? AbortSignal.timeout(LIMITS.requestTimeoutMs),
     })
     if (res.status === 401) config.onUnauthorized()
     return res
@@ -42,7 +40,7 @@ export const apiClient = hc<AppType>(baseUrl, {
 
 /** Per-request options for the slow endpoints (`POST /images`, `POST /cards/extract`). */
 export const longRequest = () => ({
-  init: { signal: AbortSignal.timeout(LONG_REQUEST_TIMEOUT_MS) },
+  init: { signal: AbortSignal.timeout(LIMITS.longRequestTimeoutMs) },
 })
 
 export class ApiError extends Error {

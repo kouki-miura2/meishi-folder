@@ -16,6 +16,8 @@ export interface CardImageDao {
   get: (userId: string, id: string) => Promise<CardImageObject | null>
   exists: (userId: string, id: string) => Promise<boolean>
   delete: (userId: string, ids: string[]) => Promise<void>
+  /** Withdrawal: deletes every photo of the user. */
+  deleteAll: (userId: string) => Promise<void>
   /** Every stored photo of every user: only for sweeping out photos no card uses. */
   list: () => Promise<CardImageEntry[]>
 }

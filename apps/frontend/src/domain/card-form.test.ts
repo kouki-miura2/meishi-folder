@@ -1,3 +1,4 @@
+import { LIMITS } from 'utils'
 import { expect, test } from 'vite-plus/test'
 
 import type { CardView, ExtractedCard } from '../api/types.ts'
@@ -137,6 +138,15 @@ test('validateCardForm rejects departments without a company and a malformed dat
   })
 
   expect(errors).toHaveLength(2)
+})
+
+test('validateCardForm caps the memo by visible characters', () => {
+  const form = { ...emptyCardForm(), name: '山田' }
+
+  expect(validateCardForm({ ...form, memo: '👨‍👩‍👧'.repeat(LIMITS.textMaxLength) })).toEqual([])
+  expect(validateCardForm({ ...form, memo: 'あ'.repeat(LIMITS.textMaxLength + 1) })).toEqual([
+    `メモは ${LIMITS.textMaxLength} 字以内で入力してください`,
+  ])
 })
 
 test('fieldsToReview flags values whose shape looks misread', () => {

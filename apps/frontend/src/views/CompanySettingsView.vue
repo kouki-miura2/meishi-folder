@@ -34,9 +34,9 @@ const add = async (name: string) => {
       variant="text"
       prepend-icon="mdi-chevron-left"
       class="px-2"
-      @click="router.push({ name: 'cards' })"
+      @click="router.push({ name: 'settings' })"
     >
-      名刺
+      設定
     </v-btn>
     <v-btn v-else variant="text" class="muted" @click="selecting = false">完了</v-btn>
     <v-btn variant="text" class="font-weight-bold" @click="selecting = !selecting">

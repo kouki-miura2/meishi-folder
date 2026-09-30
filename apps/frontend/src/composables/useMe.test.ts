@@ -4,11 +4,11 @@ import { effectScope } from 'vue'
 
 vi.mock('../api/client.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api/client.ts')>()),
-  apiClient: { me: { $get: vi.fn(), $put: vi.fn() } },
+  apiClient: { me: { $get: vi.fn(), $put: vi.fn(), $delete: vi.fn() } },
 }))
 
 import { apiClient } from '../api/client.ts'
-import { useMeQuery, useSaveMeMutation } from './useMe.ts'
+import { useDeleteMeMutation, useMeQuery, useSaveMeMutation } from './useMe.ts'
 
 const respond = (status: number, body: unknown = {}) =>
   ({ ok: status < 400, status, json: async () => body }) as never
@@ -55,5 +55,17 @@ test('useSaveMeMutation caches the saved profile and refreshes the masters', asy
 
   expect(client.getQueryData(['me'])).toEqual(me)
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ['companies'] })
+  dispose()
+})
+
+test('useDeleteMeMutation deletes the account and fails on an error status', async () => {
+  vi.mocked(apiClient.me.$delete).mockResolvedValueOnce(respond(204))
+  const { result, dispose } = run((c) => useDeleteMeMutation(c))
+
+  await result.mutateAsync()
+  expect(apiClient.me.$delete).toHaveBeenCalledOnce()
+
+  vi.mocked(apiClient.me.$delete).mockResolvedValueOnce(respond(500))
+  await expect(result.mutateAsync()).rejects.toMatchObject({ status: 500 })
   dispose()
 })

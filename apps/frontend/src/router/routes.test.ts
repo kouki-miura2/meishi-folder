@@ -12,6 +12,7 @@ test.each([
   ['/cards/new', 'card-new'],
   ['/cards/c-1', 'card'],
   ['/cards/c-1/edit', 'card-edit'],
+  ['/settings', 'settings'],
   ['/settings/companies', 'companies'],
   ['/settings/companies/co-1/departments', 'departments'],
 ])('resolves %s to the %s route', (path, name) => {

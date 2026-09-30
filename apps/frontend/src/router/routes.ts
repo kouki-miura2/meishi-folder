@@ -39,6 +39,8 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('../views/CardEditView.vue'),
     props: true,
   },
+  // Not in the design: profile, masters, CSV export, withdrawal
+  { path: '/settings', name: 'settings', component: () => import('../views/SettingsView.vue') },
   // 1k, 1l
   {
     path: '/settings/companies',

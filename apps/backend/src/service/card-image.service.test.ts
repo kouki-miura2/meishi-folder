@@ -1,6 +1,7 @@
+import { LIMITS } from 'utils'
 import { expect, test } from 'vite-plus/test'
 
-import { MAX_IMAGE_BYTES, createCardImageService } from './card-image.service.ts'
+import { createCardImageService } from './card-image.service.ts'
 import { fakeCardImageRepository } from './fakes.ts'
 
 const fileOf = (head: number[], size = 16): ArrayBuffer => {
@@ -45,7 +46,7 @@ test('upload rejects contents that are not JPEG, PNG or WebP, and oversized imag
       code: 'invalid',
     })
   }
-  await expect(service.upload('user-1', fileOf(png, MAX_IMAGE_BYTES + 1))).rejects.toMatchObject({
+  await expect(service.upload('user-1', fileOf(png, LIMITS.imageBytes + 1))).rejects.toMatchObject({
     code: 'invalid',
   })
 })

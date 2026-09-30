@@ -7,6 +7,7 @@ import type { Card, CardRepository, Office, Visibility } from '../repository/car
 import type { CompanyRepository } from '../repository/company.repository.ts'
 import type { DepartmentRepository } from '../repository/department.repository.ts'
 import type { TopicKind, TopicRepository } from '../repository/topic.repository.ts'
+import { toCsv } from './csv.ts'
 import { ServiceError } from './errors.ts'
 import type { MasterResolver } from './master-resolver.ts'
 import { cleanText, cleanTexts } from './text.ts'
@@ -110,6 +111,8 @@ export interface CardService {
   create: (userId: string, input: CardInput) => Promise<CardView>
   update: (userId: string, id: string, input: CardInput) => Promise<CardView>
   remove: (userId: string, id: string) => Promise<void>
+  /** Every card as CSV, in list order, for moving the data to another app (photos excluded). */
+  exportCsv: (userId: string) => Promise<string>
 }
 
 export interface CardServiceDependencies {
@@ -159,6 +162,77 @@ const emptyCard = (id: string, now: string): Card => ({
   createdAt: now,
   updatedAt: now,
 })
+
+const visibilityLabels: Record<Visibility, string> = {
+  private: '個人',
+  company: '会社',
+  department: '部署',
+}
+const officeColumns = ['郵便番号', '住所', '電話', 'FAX'] as const
+
+/** One CSV row per card; multi-valued fields go into one cell, one value per line. */
+const toCsvRows = (cards: CardView[]) => {
+  // One group of office columns per office on the card with the most, and at least one.
+  const officeCount = Math.max(1, ...cards.map((card) => card.offices.length))
+  const lines = (values: string[]) => values.join('\n')
+  const names = (refs: MasterRef[]) => lines(refs.map((ref) => ref.name))
+  const header = [
+    'ID',
+    '氏名',
+    '氏名カナ',
+    '氏名ローマ字',
+    '会社・団体',
+    '部署',
+    '役職',
+    '職種',
+    '携帯',
+    'メール',
+    'その他連絡',
+    'URL',
+    ...Array.from({ length: officeCount }, (_, i) =>
+      officeColumns.map((column) => `事業所${i + 1}_${column}`),
+    ).flat(),
+    '取得日',
+    '取得場所',
+    '取得機会',
+    '関連プロジェクト',
+    '関連グループ',
+    'ハンドルネーム',
+    'メモ',
+    '公開範囲',
+    '登録日時',
+    '更新日時',
+  ]
+  const rows = cards.map((card) => [
+    card.id,
+    card.name,
+    card.nameKana,
+    card.nameRomaji,
+    card.company?.name ?? null,
+    names(card.departments),
+    lines(card.titles),
+    lines(card.jobTypes),
+    card.mobile,
+    lines(card.emails),
+    lines(card.otherContacts),
+    card.url,
+    ...Array.from({ length: officeCount }, (_, i) => {
+      const office = card.offices[i]
+      return [office?.postalCode, office?.address, office?.tel, office?.fax].map((v) => v ?? null)
+    }).flat(),
+    card.metOn,
+    card.metAt,
+    card.metOccasion,
+    names(card.projects),
+    names(card.groups),
+    card.handleName,
+    card.memo,
+    visibilityLabels[card.visibility],
+    card.createdAt,
+    card.updatedAt,
+  ])
+  return [header, ...rows]
+}
 
 const imageIds = (card: Card) =>
   [card.frontImageId, card.backImageId].filter((id): id is string => id !== null)
@@ -361,6 +435,13 @@ export const createCardService = ({
       const card = await findOrThrow(userId, id)
       await cardRepository.delete(userId, id)
       if (imageIds(card).length > 0) await cardImageRepository.delete(userId, imageIds(card))
+    },
+    exportCsv: async (userId) => {
+      const [cards, masters] = await Promise.all([
+        cardRepository.list(userId, {}),
+        loadMasters(userId),
+      ])
+      return toCsv(toCsvRows(cards.map(masters.toView)))
     },
   }
 }

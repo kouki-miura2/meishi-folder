@@ -1,3 +1,5 @@
+import { LIMITS } from 'utils'
+
 import type { CardImageRepository } from '../repository/card-image.repository.ts'
 import type { CardRepository } from '../repository/card.repository.ts'
 
@@ -6,7 +8,7 @@ import type { CardRepository } from '../repository/card.repository.ts'
  * before the card is saved (and again when turned), so a young unused photo may still be on its way
  * into a card.
  */
-export const ORPHAN_IMAGE_AGE_MS = 24 * 60 * 60 * 1000
+export const ORPHAN_IMAGE_AGE_MS = LIMITS.orphanImageKeepHours * 60 * 60 * 1000
 
 export interface ImageCleanupService {
   /** Deletes the photos no card uses that are older than `ORPHAN_IMAGE_AGE_MS`; returns how many. */
