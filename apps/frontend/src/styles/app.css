@@ -33,6 +33,12 @@ body {
   background: rgb(var(--v-theme-background));
 }
 
+/* Vuetify's list subtitle has a 1rem line and hides overflow, which cuts off Noto Sans JP's
+   descenders ("g", "y" in an email address). The padding stays inside the visible box. */
+.v-list-item-subtitle {
+  padding-bottom: 3px;
+}
+
 /* Plain <button>s (camera controls, index rail, choices) start unstyled, like links. Vuetify's
    buttons are left alone: its styles sit in a cascade layer, so an unlayered rule would win. */
 button:not(.v-btn) {
@@ -126,6 +132,22 @@ button:not(.v-btn) {
   padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
   background: rgb(var(--v-theme-background));
   border-top: 1px solid var(--line);
+}
+/* While the on-screen keyboard is up, iOS Safari doesn't keep a bottom-stuck bar at the bottom: it
+   floats mid-screen (worse once the AutoFill bar changes the keyboard's height). So on touch
+   screens the bar steps aside while a field that brings up the keyboard has focus, and returns
+   when the keyboard closes. A mouse and keyboard keep it, since there's no on-screen keyboard. */
+@media (hover: none) and (pointer: coarse) {
+  body:has(
+      :is(
+        input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [readonly]),
+        textarea:not([readonly]),
+        [contenteditable]
+      ):focus
+    )
+    .bottom-bar {
+    display: none;
+  }
 }
 .main-action.v-btn {
   height: 54px;

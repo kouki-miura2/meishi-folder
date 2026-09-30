@@ -2,6 +2,8 @@
 import { computed, ref } from 'vue'
 
 // Related projects or groups, GitHub-topic style: pick an existing one or type a new one.
+// Picking from the list, Enter or leaving the field adds it. Not the list closing: it also closes
+// when typing leaves nothing to suggest, which would end the input mid-word.
 const model = defineModel<string[]>({ required: true })
 
 const props = defineProps<{ kind: 'project' | 'group'; options: string[] }>()
@@ -11,8 +13,8 @@ const draft = ref<string | null>(null)
 const color = computed(() => (props.kind === 'project' ? 'project' : 'group'))
 const choices = computed(() => props.options.filter((o) => !model.value.includes(o)))
 
-const add = () => {
-  const name = draft.value?.trim()
+const add = (picked?: string) => {
+  const name = (picked ?? draft.value)?.trim()
   if (name && !model.value.includes(name)) model.value = [...model.value, name]
   draft.value = null
   adding.value = false
@@ -39,9 +41,9 @@ const add = () => {
       density="compact"
       placeholder="名前を入力"
       class="topic-picker__input"
-      @keydown.enter.prevent="add"
-      @update:menu="(open: boolean) => !open && draft && add()"
-      @blur="add"
+      @keydown.enter.prevent="add()"
+      @item:added="(item: { title: string }) => add(item.title)"
+      @blur="add()"
     />
     <v-chip v-else :color="color" size="small" variant="outlined" @click="adding = true">
       ＋ 追加
