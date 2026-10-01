@@ -1,8 +1,9 @@
 import { LIMITS, TERMS_VERSION } from 'utils'
 
-// Fill these in before the service opens to the public: they appear in both documents.
-const OPERATOR = '（運営者名）'
-const CONTACT = '（お問い合わせ先のメールアドレス）'
+// They appear in both documents. Kept out of the public repository: set in `.env.local`, embedded
+// at build time; the placeholders stand in where it isn't set (tests, a fresh checkout).
+const OPERATOR: string = import.meta.env.VITE_OPERATOR_NAME ?? '（運営者名）'
+const CONTACT: string = import.meta.env.VITE_CONTACT_EMAIL ?? '（お問い合わせ先）'
 
 export interface LegalSection {
   heading: string
@@ -57,7 +58,13 @@ export const legalDocuments: Record<LegalDocumentKind, LegalDocument> = {
         ],
       },
       {
-        heading: '第5条（禁止事項）',
+        heading: '第5条（登録できる名刺の数）',
+        paragraphs: [
+          `ユーザーが登録できる名刺は、${LIMITS.cardsPerUser} 枚までです。上限に達したときは、不要な名刺を削除してから登録してください。運営者は、本サービスの運営上必要と判断したときは、この上限を変更できるものとします。`,
+        ],
+      },
+      {
+        heading: '第6条（禁止事項）',
         paragraphs: ['ユーザーは、本サービスの利用にあたり、次の行為をしてはなりません。'],
         items: [
           '法令または公序良俗に違反する行為',
@@ -69,33 +76,33 @@ export const legalDocuments: Record<LegalDocumentKind, LegalDocument> = {
         ],
       },
       {
-        heading: '第6条（本サービスの変更・停止・終了）',
+        heading: '第7条（本サービスの変更・停止・終了）',
         paragraphs: [
           '運営者は、保守、障害、その他やむを得ない事由があるときは、ユーザーに事前に通知することなく、本サービスの全部または一部を変更・停止できるものとします。',
           '運営者は、本サービスを終了するときは、相当の期間をおいて本サービス上で告知します。ユーザーは、終了までに「名刺データをダウンロード」で自身のデータを保存できます。',
         ],
       },
       {
-        heading: '第7条（退会）',
+        heading: '第8条（退会）',
         paragraphs: [
           'ユーザーは、設定画面の「退会する」からいつでも退会できます。退会すると、ユーザーが登録したすべてのデータ（名刺、名刺の写真、会社・団体、プロフィールなど）が削除され、元に戻すことはできません。',
         ],
       },
       {
-        heading: '第8条（免責）',
+        heading: '第9条（免責）',
         paragraphs: [
           '運営者は、本サービスに事実上または法律上の瑕疵がないことを保証しません。データの消失に備え、ユーザーは必要に応じて「名刺データをダウンロード」で控えを保存するものとします。',
           '運営者は、運営者の故意または重大な過失による場合を除き、本サービスの利用によってユーザーに生じた損害について責任を負いません。',
         ],
       },
       {
-        heading: '第9条（本規約の変更）',
+        heading: '第10条（本規約の変更）',
         paragraphs: [
           '運営者は、必要と判断したときは、本規約を変更できるものとします。重要な変更をするときは、本サービス上で告知し、必要に応じて改めて同意を求めます。',
         ],
       },
       {
-        heading: '第10条（準拠法・裁判管轄）',
+        heading: '第11条（準拠法・裁判管轄）',
         paragraphs: [
           '本規約の解釈には日本法を適用します。本サービスに関して紛争が生じたときは、運営者の所在地を管轄する地方裁判所を第一審の専属的合意管轄裁判所とします。',
         ],

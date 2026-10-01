@@ -58,6 +58,7 @@ export const createCardDao = (store: MemoryStore): CardDao => {
             withoutSpaces(c.name) === withoutSpaces(name),
         ),
       ),
+    count: async (userId) => store.cards.filter((c) => c.user_id === userId).length,
     insert: async (record) => {
       store.cards.push(structuredClone(record))
     },

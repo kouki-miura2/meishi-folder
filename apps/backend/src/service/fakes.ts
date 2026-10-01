@@ -98,6 +98,7 @@ export const fakeCardRepository = (cards: Card[] = []) =>
     list: async () => [...cards],
     findById: async (_userId, id) => structuredClone(cards.find((c) => c.id === id) ?? null),
     findByName: async (_userId, name) => cards.filter((c) => c.name === name),
+    count: async () => cards.length,
     create: async (_userId, card) => void cards.push(card),
     update: async (_userId, card) => {
       cards.splice(

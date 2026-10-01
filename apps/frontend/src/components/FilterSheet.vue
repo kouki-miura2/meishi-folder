@@ -34,72 +34,75 @@ const selectedCount = (kind: 'project' | 'group') =>
       >
     </div>
 
-    <div class="option-row">
-      <span>並び順</span>
-      <v-btn-toggle v-model="draft.sort" mandatory density="compact" color="primary">
-        <v-btn value="name" size="small">氏名順</v-btn>
-        <v-btn value="company" size="small">会社名順</v-btn>
-      </v-btn-toggle>
-    </div>
+    <!-- Only the conditions scroll: the title row and the apply button stay put. -->
+    <div class="conditions">
+      <div class="option-row">
+        <span>並び順</span>
+        <v-btn-toggle v-model="draft.sort" mandatory density="compact" color="primary">
+          <v-btn value="name" size="small">氏名順</v-btn>
+          <v-btn value="company" size="small">会社名順</v-btn>
+        </v-btn-toggle>
+      </div>
 
-    <div>
-      <div class="section-title mt-0">テキスト（全項目）</div>
-      <v-text-field v-model="draft.q" prepend-inner-icon="mdi-magnify" clearable />
-      <div class="faint text-caption mt-1">
-        氏名・会社・住所・取得場所・ハンドルネーム等すべてを対象
+      <div>
+        <div class="section-title mt-0">テキスト（全項目）</div>
+        <v-text-field v-model="draft.q" prepend-inner-icon="mdi-magnify" clearable />
+        <div class="faint text-caption mt-1">
+          氏名・会社・住所・取得場所・ハンドルネーム等すべてを対象
+        </div>
       </div>
-    </div>
 
-    <div>
-      <div class="section-title mt-0 d-flex justify-space-between">
-        <span>関連プロジェクト</span>
-        <span v-if="selectedCount('project')" class="text-project">
-          {{ selectedCount('project') }}件選択
-        </span>
+      <div>
+        <div class="section-title mt-0 d-flex justify-space-between">
+          <span>関連プロジェクト</span>
+          <span v-if="selectedCount('project')" class="text-project">
+            {{ selectedCount('project') }}件選択
+          </span>
+        </div>
+        <div class="chips">
+          <v-chip
+            v-for="t in projects"
+            :key="t.id"
+            color="project"
+            :variant="draft.topicIds.includes(t.id) ? 'flat' : 'outlined'"
+            :prepend-icon="draft.topicIds.includes(t.id) ? 'mdi-check' : undefined"
+            @click="draft = toggleTopic(draft, t.id)"
+          >
+            {{ t.name }}
+          </v-chip>
+          <span v-if="!projects.length" class="faint text-caption">まだありません</span>
+        </div>
       </div>
-      <div class="chips">
-        <v-chip
-          v-for="t in projects"
-          :key="t.id"
-          color="project"
-          :variant="draft.topicIds.includes(t.id) ? 'flat' : 'outlined'"
-          :prepend-icon="draft.topicIds.includes(t.id) ? 'mdi-check' : undefined"
-          @click="draft = toggleTopic(draft, t.id)"
-        >
-          {{ t.name }}
-        </v-chip>
-        <span v-if="!projects.length" class="faint text-caption">まだありません</span>
-      </div>
-    </div>
 
-    <div>
-      <div class="section-title mt-0 d-flex justify-space-between">
-        <span>関連グループ</span>
-        <span v-if="selectedCount('group')" class="text-group">
-          {{ selectedCount('group') }}件選択
-        </span>
+      <div>
+        <div class="section-title mt-0 d-flex justify-space-between">
+          <span>関連グループ</span>
+          <span v-if="selectedCount('group')" class="text-group">
+            {{ selectedCount('group') }}件選択
+          </span>
+        </div>
+        <div class="chips">
+          <v-chip
+            v-for="t in groups"
+            :key="t.id"
+            color="group"
+            :variant="draft.topicIds.includes(t.id) ? 'flat' : 'outlined'"
+            :prepend-icon="draft.topicIds.includes(t.id) ? 'mdi-check' : undefined"
+            @click="draft = toggleTopic(draft, t.id)"
+          >
+            {{ t.name }}
+          </v-chip>
+          <span v-if="!groups.length" class="faint text-caption">まだありません</span>
+        </div>
       </div>
-      <div class="chips">
-        <v-chip
-          v-for="t in groups"
-          :key="t.id"
-          color="group"
-          :variant="draft.topicIds.includes(t.id) ? 'flat' : 'outlined'"
-          :prepend-icon="draft.topicIds.includes(t.id) ? 'mdi-check' : undefined"
-          @click="draft = toggleTopic(draft, t.id)"
-        >
-          {{ t.name }}
-        </v-chip>
-        <span v-if="!groups.length" class="faint text-caption">まだありません</span>
-      </div>
-    </div>
 
-    <div class="option-row">
-      <span>複数選択時の条件</span>
-      <v-btn-toggle v-model="draft.match" mandatory density="compact" color="primary">
-        <v-btn value="any" size="small">いずれか</v-btn>
-        <v-btn value="all" size="small">すべて</v-btn>
-      </v-btn-toggle>
+      <div class="option-row">
+        <span>複数選択時の条件</span>
+        <v-btn-toggle v-model="draft.match" mandatory density="compact" color="primary">
+          <v-btn value="any" size="small">いずれか</v-btn>
+          <v-btn value="all" size="small">すべて</v-btn>
+        </v-btn-toggle>
+      </div>
     </div>
 
     <v-btn
@@ -116,6 +119,18 @@ const selectedCount = (kind: 'project' | 'group') =>
 </template>
 
 <style scoped>
+.conditions {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.conditions + .main-action {
+  flex: none;
+}
 .chips {
   display: flex;
   flex-wrap: wrap;

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useQueryClient } from '@tanstack/vue-query'
-import { formatDate } from 'utils'
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { LIMITS, formatDate } from 'utils'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { cardLimitMessage } from '../api/errors.ts'
 import type { CardSummary } from '../api/types.ts'
 import CameraCapture from '../components/CameraCapture.vue'
 import CandidateSheet, { type CandidateChoice } from '../components/CandidateSheet.vue'
@@ -11,6 +12,7 @@ import CardFormFields from '../components/CardFormFields.vue'
 import ExtractionProgress from '../components/ExtractionProgress.vue'
 import {
   fetchCandidates,
+  fetchCardCount,
   useCreateCardMutation,
   useExtractCardMutation,
   useUpdateCardMutation,
@@ -57,6 +59,12 @@ const saving = ref(false)
 // Uploads keep going if the user skips extraction; saving waits for them.
 let uploads: Promise<CardImages> | null = null
 let skipped = false
+
+// At the card limit, say so before any photo is taken rather than when saving. The API checks too.
+const atLimit = ref(false)
+onMounted(async () => {
+  atLimit.value = (await fetchCardCount(queryClient).catch(() => 0)) >= LIMITS.cardsPerUser
+})
 
 const today = () => formatDate(new Date())
 const errors = computed(() => validateCardForm(form.value))
@@ -274,6 +282,16 @@ const choose = async (choice: CandidateChoice) => {
     @choose="choose"
     @close="candidates = []"
   />
+
+  <v-dialog :model-value="atLimit" max-width="360" persistent>
+    <v-card title="登録数の上限です">
+      <v-card-text>{{ cardLimitMessage }}</v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn color="primary" @click="backTo(router, { name: 'cards' })">名刺一覧に戻る</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <style scoped>

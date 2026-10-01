@@ -4,8 +4,9 @@ import type { MaybeRefOrGetter } from 'vue'
 import { computed, onScopeDispose, ref, toValue, watch } from 'vue'
 
 import { ApiError, apiClient, longRequest, unwrap } from '../api/client.ts'
+import { CardLimitError } from '../api/errors.ts'
 import type { CardInput, CardUpdateInput } from '../api/types.ts'
-import { type CardFilter, filterToQuery } from '../domain/card-filter.ts'
+import { type CardFilter, emptyCardFilter, filterToQuery } from '../domain/card-filter.ts'
 
 /** The card list, refetched as the filter changes; the previous results stay up while it loads. */
 export const useCardsQuery = (filter: MaybeRefOrGetter<CardFilter>, queryClient?: QueryClient) =>
@@ -19,6 +20,15 @@ export const useCardsQuery = (filter: MaybeRefOrGetter<CardFilter>, queryClient?
     },
     queryClient,
   )
+
+/** How many cards the user has: the unfiltered list, shared with the card list's cache. */
+export const fetchCardCount = async (client: QueryClient) =>
+  (
+    await client.fetchQuery({
+      queryKey: ['cards', filterToQuery(emptyCardFilter())],
+      queryFn: async () => unwrap(await apiClient.cards.$get({ query: {} })),
+    })
+  ).length
 
 export const useCardQuery = (id: MaybeRefOrGetter<string>, queryClient?: QueryClient) =>
   useQuery(
@@ -48,10 +58,11 @@ const useCardMutation = <Variables, Result>(
 }
 
 export const useCreateCardMutation = (queryClient?: QueryClient) =>
-  useCardMutation(
-    async (input: CardInput) => unwrap(await apiClient.cards.$post({ json: input })),
-    queryClient,
-  )
+  useCardMutation(async (input: CardInput) => {
+    const res = await apiClient.cards.$post({ json: input })
+    if ((res.status as number) === 409) throw new CardLimitError()
+    return unwrap(res)
+  }, queryClient)
 
 export const useUpdateCardMutation = (queryClient?: QueryClient) =>
   useCardMutation(

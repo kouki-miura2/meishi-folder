@@ -1,7 +1,20 @@
+import { LIMITS } from 'utils'
+
 import { ApiError } from './client.ts'
+
+export const cardLimitMessage = `名刺は ${LIMITS.cardsPerUser} 枚まで登録できます。不要な名刺を削除してから登録してください`
+
+/** `POST /cards` refused because the user already has `LIMITS.cardsPerUser` cards (its only 409). */
+export class CardLimitError extends Error {
+  constructor() {
+    super(cardLimitMessage)
+    this.name = 'CardLimitError'
+  }
+}
 
 /** A Japanese message for the user, by what went wrong rather than the backend's English text. */
 export const errorMessage = (error: unknown): string => {
+  if (error instanceof CardLimitError) return cardLimitMessage
   if (error instanceof ApiError) {
     switch (error.status) {
       case 400:

@@ -135,6 +135,13 @@ export const createCardDao = (db: D1Database): CardDao => {
         .all<CardRow>()
       return withIds(userId, results)
     },
+    count: async (userId) => {
+      const row = await db
+        .prepare('SELECT COUNT(*) AS n FROM cards WHERE user_id = ?')
+        .bind(userId)
+        .first<{ n: number }>()
+      return row?.n ?? 0
+    },
     insert: async (record) => {
       await db.batch([
         db

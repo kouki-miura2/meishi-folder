@@ -1,3 +1,5 @@
+import { LIMITS } from 'utils'
+
 import type {
   CardExtractorRepository,
   ExtractedCard,
@@ -411,6 +413,10 @@ export const createCardService = ({
       return masters.toView(card)
     },
     create: async (userId, input) => {
+      // Before resolving the masters, so a refused card leaves no new company or topic behind.
+      if ((await cardRepository.count(userId)) >= LIMITS.cardsPerUser) {
+        throw new ServiceError('conflict', `At most ${LIMITS.cardsPerUser} cards can be registered`)
+      }
       const base = emptyCard(crypto.randomUUID(), new Date().toISOString())
       const card = await apply(userId, base, { ...input, visibility: 'private' })
       await cardRepository.create(userId, card)

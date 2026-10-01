@@ -18,6 +18,7 @@ const fakeDao = (overrides: Partial<CardDao> = {}): CardDao => ({
   list: async () => [record],
   findById: async () => record,
   findByName: async () => [record],
+  count: async () => 1,
   insert: async () => {},
   update: async () => {},
   delete: async () => {},

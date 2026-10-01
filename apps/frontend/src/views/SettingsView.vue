@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { formatDate } from 'utils'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useExportCardsMutation } from '../composables/useCards.ts'
 import { useInstallApp } from '../composables/useInstallApp.ts'
-import { useDeleteMeMutation } from '../composables/useMe.ts'
+import { useDeleteMeMutation, useMeQuery } from '../composables/useMe.ts'
 import { useSignOut } from '../composables/useSignOut.ts'
 import { saveFile } from '../lib/download.ts'
 import { useAuthStore } from '../stores/auth.ts'
@@ -15,6 +15,7 @@ import { useAuthStore } from '../stores/auth.ts'
 const auth = useAuthStore()
 const router = useRouter()
 const exportCards = useExportCardsMutation()
+const { data: me } = useMeQuery()
 const deleteMe = useDeleteMeMutation()
 const signOut = useSignOut()
 const install = useInstallApp()
@@ -26,7 +27,11 @@ const links: { title: string; url: string | null }[] = [
   { title: 'プライバシーポリシー', url: '/privacy' },
 ]
 
+// Withdrawal takes two steps: the notice, then typing the profile's name as the final check.
 const withdrawing = ref(false)
+const confirmingWithdrawal = ref(false)
+const typedName = ref('')
+const nameMatches = computed(() => !!me.value && typedName.value.trim() === me.value.name.trim())
 const showingInstallSteps = ref(false)
 
 // Installs directly where the browser can; iOS can't from a script, so it gets the steps instead.
@@ -40,9 +45,16 @@ const download = async () => {
   saveFile(csv, `meishi-folder-${formatDate(new Date(), 'yyyyMMdd')}.csv`)
 }
 
-const withdraw = async () => {
-  await deleteMe.mutateAsync()
+const confirmWithdrawal = () => {
   withdrawing.value = false
+  typedName.value = ''
+  confirmingWithdrawal.value = true
+}
+
+const withdraw = async () => {
+  if (!nameMatches.value || deleteMe.isPending.value) return
+  await deleteMe.mutateAsync()
+  confirmingWithdrawal.value = false
   await signOut()
 }
 </script>
@@ -62,7 +74,7 @@ const withdraw = async () => {
     <h1 class="page-title mb-4">設定</h1>
 
     <v-list class="panel py-0 mb-4">
-      <v-list-item :title="auth.profile?.name" :subtitle="auth.profile?.email">
+      <v-list-item :title="me?.name ?? auth.profile?.name" :subtitle="auth.profile?.email">
         <template #prepend>
           <v-avatar size="40" color="#D9D4C7" class="mr-1">
             <v-img v-if="auth.profile?.picture" :src="auth.profile.picture" alt="" />
@@ -156,7 +168,35 @@ const withdraw = async () => {
       <v-card-actions>
         <v-spacer />
         <v-btn variant="text" @click="withdrawing = false">キャンセル</v-btn>
-        <v-btn color="error" :loading="deleteMe.isPending.value" @click="withdraw">退会する</v-btn>
+        <v-btn color="error" @click="confirmWithdrawal">削除する</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <v-dialog v-model="confirmingWithdrawal" max-width="360">
+    <v-card title="最終確認">
+      <v-card-text>
+        退会を確定するには、プロフィールの氏名「{{ me?.name }}」を入力してください。
+        <v-text-field
+          v-model="typedName"
+          label="氏名"
+          autocomplete="off"
+          class="mt-4"
+          hide-details
+          @keydown.enter="withdraw"
+        />
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="text" @click="confirmingWithdrawal = false">キャンセル</v-btn>
+        <v-btn
+          color="error"
+          :disabled="!nameMatches"
+          :loading="deleteMe.isPending.value"
+          @click="withdraw"
+        >
+          退会する
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

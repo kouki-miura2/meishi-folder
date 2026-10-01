@@ -1,3 +1,4 @@
+import { LIMITS } from 'utils'
 import { expect, test } from 'vite-plus/test'
 
 import { createCardService } from './card.service.ts'
@@ -101,6 +102,14 @@ test.each([
   const { service } = setup()
 
   await expect(service.create('user-1', input)).rejects.toMatchObject({ code: 'invalid' })
+})
+
+test('create refuses a card past the limit, before resolving any master', async () => {
+  const { service, companyRepository } = setup()
+  for (let i = 0; i < LIMITS.cardsPerUser; i++) await service.create('user-1', { name: `${i}` })
+
+  await expect(service.create('user-1', registered)).rejects.toMatchObject({ code: 'conflict' })
+  expect(companyRepository.companies).toHaveLength(0)
 })
 
 test('update keeps omitted fields and clears fields sent as null', async () => {

@@ -42,6 +42,12 @@ const quickActions = computed(() => [
       `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address.value)}`,
   },
 ])
+// Cards print the URL with or without a scheme; without one, open it over https.
+const urlHref = computed(() => {
+  const url = card.value?.url
+  if (!url) return null
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`
+})
 const visibilityLabel = { private: '個人', company: '会社', department: '部署' } as const
 </script>
 
@@ -147,14 +153,21 @@ const visibilityLabel = { private: '個人', company: '会社', department: '部
           <span class="row-label">メール</span><span class="mono text-break">{{ e }}</span>
         </div>
         <div v-if="card.url" class="panel-row">
-          <span class="row-label">URL</span><span class="mono text-break">{{ card.url }}</span>
+          <span class="row-label">URL</span
+          ><a
+            :href="urlHref ?? undefined"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mono text-break link"
+            >{{ card.url }}</a
+          >
         </div>
         <div v-for="c in card.otherContacts" :key="c" class="panel-row">
           <span class="row-label">その他</span>{{ c }}
         </div>
         <div v-for="(o, i) in card.offices" :key="i" class="panel-row align-start py-3">
           <span class="row-label">事業所</span>
-          <span class="text-body-2">
+          <span>
             <template v-if="o.postalCode">〒{{ o.postalCode }}&nbsp;</template>{{ o.address }}
             <span v-if="o.tel" class="d-block mono">TEL {{ o.tel }}</span>
             <span v-if="o.fax" class="d-block mono">FAX {{ o.fax }}</span>
@@ -281,6 +294,14 @@ const visibilityLabel = { private: '個人', company: '会社', department: '部
 .detail__kana {
   font-size: 13px;
   line-height: 1.4;
+}
+/* The values in the panels; the labels keep their own, smaller size. */
+.detail .panel-row {
+  font-size: 0.8rem;
+}
+.link {
+  color: inherit;
+  text-decoration: underline;
 }
 .memo {
   white-space: pre-wrap;

@@ -143,3 +143,11 @@ test('list with match any requires at least one requested topic', async () => {
 
   expect(cards.map((c) => c.id)).toEqual(['handle'])
 })
+
+test('count counts only the given user', async () => {
+  const dao = createCardDao(testEnv.env.DB)
+
+  await expect(dao.count('user-1')).resolves.toBe(3)
+  await expect(dao.count('user-2')).resolves.toBe(1)
+  await expect(dao.count('user-3')).resolves.toBe(0)
+})

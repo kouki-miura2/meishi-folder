@@ -59,9 +59,13 @@ const applyFilter = (next: CardFilter) => {
   void setFilter(next)
 }
 
-const title = (card: CardSummary) => card.name ?? card.handleName ?? card.nameKana ?? ''
-const subtitle = (card: CardSummary) =>
-  card.name ? (card.nameKana ?? '') : card.handleName ? 'ハンドルネーム' : ''
+// A handle name matters more than the reading: with one, the row reads "氏名／ハンドルネーム".
+const title = (card: CardSummary) =>
+  [card.name, card.handleName].filter(Boolean).join('／') || (card.nameKana ?? '')
+const subtitle = (card: CardSummary) => {
+  if (card.handleName) return card.name ? '' : 'ハンドルネーム'
+  return card.name ? (card.nameKana ?? '') : ''
+}
 const departments = (card: CardSummary) => card.departmentNames.join(' / ')
 
 // Only the list scrolls, so the router's scrollBehavior (window scroll) can't bring it back when

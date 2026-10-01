@@ -35,7 +35,7 @@ export const apiClient = hc<AppType>(baseUrl, {
   },
 })
 
-/** Per-request options for the slow endpoints (`POST /images`, `POST /cards/extract`). */
+/** Per-request options for the slow endpoints (`POST /images`, `POST /cards/extract`, `GET /cards/export`). */
 export const longRequest = () => ({
   init: { signal: AbortSignal.timeout(LIMITS.longRequestTimeoutMs) },
 })

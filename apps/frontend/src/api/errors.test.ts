@@ -1,7 +1,7 @@
 import { expect, test } from 'vite-plus/test'
 
 import { ApiError } from './client.ts'
-import { errorMessage } from './errors.ts'
+import { CardLimitError, cardLimitMessage, errorMessage } from './errors.ts'
 
 test.each([
   [400, '入力内容を確認してください'],
@@ -15,4 +15,8 @@ test.each([
 test('explains a timeout separately from other network failures', () => {
   expect(errorMessage(new DOMException('timed out', 'TimeoutError'))).toContain('時間内に応答')
   expect(errorMessage(new TypeError('Failed to fetch'))).toContain('通信に失敗しました')
+})
+
+test('explains the card limit rather than a name clash', () => {
+  expect(errorMessage(new CardLimitError())).toBe(cardLimitMessage)
 })

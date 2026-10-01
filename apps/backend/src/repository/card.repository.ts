@@ -40,6 +40,7 @@ export interface CardRepository {
   list: (userId: string, filter: CardFilter) => Promise<Card[]>
   findById: (userId: string, id: string) => Promise<Card | null>
   findByName: (userId: string, name: string) => Promise<Card[]>
+  count: (userId: string) => Promise<number>
   create: (userId: string, card: Card) => Promise<void>
   update: (userId: string, card: Card) => Promise<void>
   delete: (userId: string, id: string) => Promise<void>
@@ -107,6 +108,7 @@ export const createCardRepository = (dao: CardDao): CardRepository => ({
     return record ? toCard(record) : null
   },
   findByName: async (userId, name) => (await dao.findByName(userId, name)).map(toCard),
+  count: dao.count,
   create: (userId, card) => dao.insert(toRecord(userId, card)),
   update: (userId, card) => dao.update(toRecord(userId, card)),
   delete: dao.delete,

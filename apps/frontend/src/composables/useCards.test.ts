@@ -5,15 +5,23 @@ import { effectScope, nextTick, ref } from 'vue'
 vi.mock('../api/client.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api/client.ts')>()),
   apiClient: {
-    cards: { $get: vi.fn(), extract: { $post: vi.fn() }, export: { $get: vi.fn() } },
+    cards: {
+      $get: vi.fn(),
+      $post: vi.fn(),
+      extract: { $post: vi.fn() },
+      export: { $get: vi.fn() },
+    },
     images: { ':id': { $get: vi.fn() } },
   },
 }))
 
 import { apiClient } from '../api/client.ts'
+import { CardLimitError } from '../api/errors.ts'
 import type { CardFilter } from '../domain/card-filter.ts'
 import {
+  fetchCardCount,
   useCardImageUrl,
+  useCreateCardMutation,
   useCardsQuery,
   useExportCardsMutation,
   useExtractCardMutation,
@@ -97,5 +105,23 @@ test('useExportCardsMutation resolves the CSV as a blob and fails on an error st
 
   vi.mocked(apiClient.cards.export.$get).mockResolvedValueOnce(respond(500))
   await expect(result.mutateAsync()).rejects.toMatchObject({ status: 500 })
+  dispose()
+})
+
+test('fetchCardCount counts the unfiltered list, sharing the card list cache', async () => {
+  vi.mocked(apiClient.cards.$get).mockResolvedValue(respond(200, [{ id: 'a' }, { id: 'b' }]))
+  const { client, dispose } = run((c) => c)
+
+  await expect(fetchCardCount(client)).resolves.toBe(2)
+  expect(apiClient.cards.$get).toHaveBeenLastCalledWith({ query: {} })
+  expect(client.getQueryData(['cards', {}])).toHaveLength(2)
+  dispose()
+})
+
+test('useCreateCardMutation reports a 409 as the card limit', async () => {
+  vi.mocked(apiClient.cards.$post).mockResolvedValue(respond(409))
+  const { result, dispose } = run((client) => useCreateCardMutation(client))
+
+  await expect(result.mutateAsync({ name: '佐藤' })).rejects.toBeInstanceOf(CardLimitError)
   dispose()
 })

@@ -43,6 +43,7 @@ export interface CardDao {
   findById: (userId: string, id: string) => Promise<CardRecord | null>
   /** Matches `name` ignoring whitespace (half- and full-width). */
   findByName: (userId: string, name: string) => Promise<CardRecord[]>
+  count: (userId: string) => Promise<number>
   insert: (record: CardRecord) => Promise<void>
   update: (record: CardRecord) => Promise<void>
   delete: (userId: string, id: string) => Promise<void>

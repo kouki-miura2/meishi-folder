@@ -23,6 +23,8 @@ export const LIMITS = {
   officesPerCard: 20,
   /** Max number of affiliations on a user's profile. Checked in the API. */
   affiliationsPerUser: 20,
+  /** Max number of cards a user can register. Checked in the API, and in the UI before taking photos. */
+  cardsPerUser: 300,
   /** Max number of masters merged into another in one request. Checked in the API. */
   mergeSourcesPerRequest: 100,
   /** Max size of a request body, in bytes (10 MB). Checked in the API before the body is read. */
@@ -30,15 +32,15 @@ export const LIMITS = {
   /** Max size of a card photo, in bytes (5 MB). Checked in the API on upload. */
   imageBytes: 5 * 1024 * 1024,
   /** Long edge a card photo is shrunk to before upload, in pixels. Applied in the UI. */
-  imageLongEdgePx: 1600,
+  imageLongEdgePx: 1280,
   /** How long an unused card photo is kept before the daily cleanup deletes it, in hours. */
   orphanImageKeepHours: 24,
   /** Pause in typing before the card list searches, in milliseconds. */
-  searchDebounceMs: 300,
+  searchDebounceMs: 500,
   /** How long a sign-in lasts before Google sign-in is needed again, in hours. Set by the API. */
   sessionHours: 12,
   /** Timeout of an API request from the UI, in milliseconds. */
   requestTimeoutMs: 3 * 1000,
-  /** Timeout of a slow API request from the UI (photo upload, AI extraction), in milliseconds. */
+  /** Timeout of a slow API request from the UI (photo upload, AI extraction, CSV export), in milliseconds. */
   longRequestTimeoutMs: 60 * 1000,
 } as const
