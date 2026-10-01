@@ -1,16 +1,20 @@
 import { zValidator } from '@hono/zod-validator'
 import { Hono, type Context } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
+import { deleteCookie, setCookie } from 'hono/cookie'
+import { csrf } from 'hono/csrf'
 import { HTTPException } from 'hono/http-exception'
 import { LIMITS, charLength, createLogger } from 'utils'
 import { z } from 'zod'
 
 import type { AuthGuard, AuthenticatedUser } from './repository/auth-guard.interface.ts'
+import { SESSION_COOKIE } from './repository/auth-guard.session.ts'
 import type { CardImageService } from './service/card-image.service.ts'
 import type { CardService } from './service/card.service.ts'
 import type { CompanyService } from './service/company.service.ts'
 import type { DepartmentService } from './service/department.service.ts'
 import { ServiceError, type ServiceErrorCode } from './service/errors.ts'
+import type { SessionService } from './service/session.service.ts'
 import type { TopicService } from './service/topic.service.ts'
 import type { UserService } from './service/user.service.ts'
 
@@ -22,6 +26,7 @@ export interface AuthConfig {
 }
 
 export interface AppDependencies {
+  sessionService: SessionService
   userService: UserService
   companyService: CompanyService
   departmentService: DepartmentService
@@ -71,6 +76,8 @@ const text = z
     message: `Must be at most ${LIMITS.textMaxLength} characters`,
   })
 const optionalText = text.nullish()
+// A Google ID token is about 1 KB; anything far larger is not one.
+const ID_TOKEN_MAX_LENGTH = 8 * 1024
 const texts = z.array(text).max(LIMITS.valuesPerField).optional()
 const nameSchema = z.object({ name: text })
 const mergeSchema = z.object({
@@ -139,6 +146,9 @@ export const createApp = (deps: AppDependencies) => {
           })
         }
       })
+      // Sign-in rides on a cookie, so refuse what a form on another site could send. SameSite=Strict
+      // already keeps the cookie off such requests; this covers browsers that ignore it.
+      .use('*', csrf())
       .use('*', async (c, next) => {
         if (deps.auth.enabled && !deps.auth.excludePaths.includes(c.req.path)) {
           const user = await deps.auth.guard.authenticate(c.req.raw)
@@ -172,6 +182,28 @@ export const createApp = (deps: AppDependencies) => {
       // Each route only talks to its service; the runtime entrypoints wire the concrete
       // dao -> repository -> service chain.
 
+      // Sign-in (login screen) and sign-out. Not behind the auth guard.
+      .post(
+        '/session',
+        zValidator('json', z.object({ idToken: z.string().max(ID_TOKEN_MAX_LENGTH) })),
+        async (c) => {
+          const session = await deps.sessionService.signIn(c.req.valid('json').idToken)
+          if (!session) return c.json({ error: 'Unauthorized' }, 401)
+          setCookie(c, SESSION_COOKIE, session.token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'Strict',
+            path: '/',
+            expires: new Date(session.expiresAt * 1000),
+          })
+          return c.json({ ...session.account, expiresAt: session.expiresAt })
+        },
+      )
+      .delete('/session', (c) => {
+        deleteCookie(c, SESSION_COOKIE, { secure: true, path: '/' })
+        return c.body(null, 204)
+      })
+
       // User profile (welcome screen)
       .get('/me', async (c) => c.json(await deps.userService.getMe(userIdOf(c))))
       .put(
@@ -184,6 +216,7 @@ export const createApp = (deps: AppDependencies) => {
             affiliations: z
               .array(z.object({ companyName: text, departmentName: optionalText }))
               .max(LIMITS.affiliationsPerUser),
+            agreedTermsVersion: z.string().max(100).optional(),
           }),
         ),
         async (c) => c.json(await deps.userService.saveMe(userIdOf(c), c.req.valid('json'))),

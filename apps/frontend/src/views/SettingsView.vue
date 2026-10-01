@@ -22,8 +22,8 @@ const install = useInstallApp()
 // Pages still to be written: a row stays disabled until its url is set.
 const links: { title: string; url: string | null }[] = [
   { title: 'ヘルプ', url: null },
-  { title: '利用規約', url: null },
-  { title: 'プライバシーポリシー', url: null },
+  { title: '利用規約', url: '/terms' },
+  { title: 'プライバシーポリシー', url: '/privacy' },
 ]
 
 const withdrawing = ref(false)

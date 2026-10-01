@@ -1,7 +1,5 @@
 import { verifyWithJwks } from 'hono/jwt'
 
-import type { AuthGuard } from './auth-guard.interface.ts'
-
 type Jwk = NonNullable<Parameters<typeof verifyWithJwks>[1]['keys']>[number]
 
 const GOOGLE_JWKS_URI = 'https://www.googleapis.com/oauth2/v3/certs'
@@ -20,31 +18,48 @@ const loadGoogleKeys = async (): Promise<Jwk[]> => {
   return keys
 }
 
-export interface GoogleAuthGuardOptions {
+/** The Google account an ID token was issued to. */
+export interface GoogleAccount {
+  /** The account's `sub`: the app's user id. */
+  id: string
+  email: string
+  name: string
+  picture: string | null
+}
+
+export interface GoogleIdTokenRepository {
+  /** The account of a valid ID token (signature, issuer, audience, expiry), or `null`. */
+  verify: (idToken: string) => Promise<GoogleAccount | null>
+}
+
+export interface GoogleIdTokenRepositoryOptions {
   /** OAuth client id the ID token must be issued for (`aud`). */
   clientId: string
   /** Signing keys to verify against; defaults to Google's published JWKS. */
   loadKeys?: () => Promise<Jwk[]>
 }
 
-/**
- * Verifies a Google ID token sent as `Authorization: Bearer <token>` (signature, issuer,
- * audience, expiry) and identifies the user by the token's `sub`.
- */
-export const createGoogleAuthGuard = ({
+const stringClaim = (value: unknown) => (typeof value === 'string' ? value : null)
+
+export const createGoogleIdTokenRepository = ({
   clientId,
   loadKeys = loadGoogleKeys,
-}: GoogleAuthGuardOptions): AuthGuard => ({
-  authenticate: async (request) => {
-    const token = request.headers.get('authorization')?.match(/^Bearer (.+)$/i)?.[1]
-    if (!token) return null
+}: GoogleIdTokenRepositoryOptions): GoogleIdTokenRepository => ({
+  verify: async (idToken) => {
     try {
-      const payload = await verifyWithJwks(token, {
+      const payload = await verifyWithJwks(idToken, {
         keys: await loadKeys(),
         allowedAlgorithms: ['RS256'],
         verification: { iss: GOOGLE_ISSUER, aud: clientId },
       })
-      return typeof payload.sub === 'string' ? { id: payload.sub } : null
+      const id = stringClaim(payload.sub)
+      if (!id) return null
+      return {
+        id,
+        email: stringClaim(payload.email) ?? '',
+        name: stringClaim(payload.name) ?? '',
+        picture: stringClaim(payload.picture),
+      }
     } catch {
       return null
     }

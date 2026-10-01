@@ -7,6 +7,8 @@ const router = createRouter({ history: createMemoryHistory(), routes })
 
 test.each([
   ['/login', 'login'],
+  ['/terms', 'terms'],
+  ['/privacy', 'privacy'],
   ['/welcome', 'welcome'],
   ['/', 'cards'],
   ['/cards/new', 'card-new'],
@@ -26,8 +28,12 @@ test('passes route params to the views as props', () => {
   expect(resolved.matched[0]?.props.default).toBe(true)
 })
 
-test('only the login screen is public', () => {
-  expect(routes.filter((r) => r.meta?.public).map((r) => r.name)).toEqual(['login'])
+test('only the login screen and the terms are public', () => {
+  expect(routes.filter((r) => r.meta?.public).map((r) => r.name)).toEqual([
+    'login',
+    'terms',
+    'privacy',
+  ])
 })
 
 test('has no match for an unknown path', () => {

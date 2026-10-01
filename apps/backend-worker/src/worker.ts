@@ -1,10 +1,12 @@
 import { createApp } from 'backend/src/app.ts'
-import { createGoogleAuthGuard } from 'backend/src/repository/auth-guard.google.ts'
+import { createSessionAuthGuard } from 'backend/src/repository/auth-guard.session.ts'
 import { createCardExtractorRepository } from 'backend/src/repository/card-extractor.repository.ts'
 import { createCardImageRepository } from 'backend/src/repository/card-image.repository.ts'
 import { createCardRepository } from 'backend/src/repository/card.repository.ts'
 import { createCompanyRepository } from 'backend/src/repository/company.repository.ts'
 import { createDepartmentRepository } from 'backend/src/repository/department.repository.ts'
+import { createGoogleIdTokenRepository } from 'backend/src/repository/google-id-token.repository.ts'
+import { createSessionTokenRepository } from 'backend/src/repository/session-token.repository.ts'
 import { createTopicRepository } from 'backend/src/repository/topic.repository.ts'
 import { createUserRepository } from 'backend/src/repository/user.repository.ts'
 import { createCardImageService } from 'backend/src/service/card-image.service.ts'
@@ -13,6 +15,7 @@ import { createCompanyService } from 'backend/src/service/company.service.ts'
 import { createDepartmentService } from 'backend/src/service/department.service.ts'
 import { createImageCleanupService } from 'backend/src/service/image-cleanup.service.ts'
 import { createMasterResolver } from 'backend/src/service/master-resolver.ts'
+import { createSessionService } from 'backend/src/service/session.service.ts'
 import { createTopicService } from 'backend/src/service/topic.service.ts'
 import { createUserService } from 'backend/src/service/user.service.ts'
 import { createLogger } from 'utils'
@@ -26,11 +29,19 @@ import { createDepartmentDao } from './dao/department.d1.ts'
 import { createTopicDao } from './dao/topic.d1.ts'
 import { createUserDao } from './dao/user.d1.ts'
 
-/** `GOOGLE_CLIENT_ID` is a secret (`.dev.vars` / `wrangler secret put`), so `wrangler types` doesn't list it. */
-type WorkerEnv = Env & { GOOGLE_CLIENT_ID?: string }
+/** Secrets (`.dev.vars` / `wrangler secret put`), so `wrangler types` doesn't list them. */
+type WorkerEnv = Env & { GOOGLE_CLIENT_ID?: string; SESSION_SECRET?: string }
+
+// 256 bits, the size of the HMAC-SHA256 key that signs sessions.
+const SESSION_SECRET_MIN_LENGTH = 32
 
 const createWorkerApp = (env: WorkerEnv) => {
   if (!env.GOOGLE_CLIENT_ID) throw new Error('GOOGLE_CLIENT_ID is not set')
+  const secret = env.SESSION_SECRET ?? ''
+  if (secret.length < SESSION_SECRET_MIN_LENGTH) {
+    throw new Error(`SESSION_SECRET must be at least ${SESSION_SECRET_MIN_LENGTH} characters`)
+  }
+  const sessionTokenRepository = createSessionTokenRepository({ secret })
 
   const { cardRepository, cardImageRepository } = createCardRepositories(env)
   const userRepository = createUserRepository(createUserDao(env.DB))
@@ -45,6 +56,10 @@ const createWorkerApp = (env: WorkerEnv) => {
   })
 
   return createApp({
+    sessionService: createSessionService({
+      googleIdTokenRepository: createGoogleIdTokenRepository({ clientId: env.GOOGLE_CLIENT_ID }),
+      sessionTokenRepository,
+    }),
     userService: createUserService({
       userRepository,
       companyRepository,
@@ -66,9 +81,10 @@ const createWorkerApp = (env: WorkerEnv) => {
       masterResolver,
     }),
     auth: {
-      guard: createGoogleAuthGuard({ clientId: env.GOOGLE_CLIENT_ID }),
+      guard: createSessionAuthGuard(sessionTokenRepository),
       enabled: true,
-      excludePaths: [],
+      // Signing in and out works without a (valid) session.
+      excludePaths: ['/session'],
     },
   })
 }

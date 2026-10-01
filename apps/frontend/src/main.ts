@@ -15,8 +15,7 @@ const app = createApp(App).use(pinia)
 const auth = useAuthStore(pinia)
 
 configureApiClient({
-  getToken: () => auth.validToken(),
-  // The ID token expired or was revoked: sign in again, then come back to the same screen.
+  // The session expired: sign in again, then come back to the same screen.
   onUnauthorized: () => {
     auth.signOut()
     queryClient.clear()

@@ -17,9 +17,9 @@ const loadGoogleIdentity = () =>
   }))
 
 /**
- * Prepares "Sign in with Google": `onCredential` receives the ID token the backend verifies.
- * `auto_select` lets a returning user sign back in without a click, e.g. after the hour-long
- * token expired.
+ * Prepares "Sign in with Google": `onCredential` receives the ID token the backend trades for its
+ * own session. `auto_select` lets a returning user sign back in without a click once the session
+ * has expired.
  */
 export const initGoogleSignIn = async (onCredential: (idToken: string) => void) => {
   const id = await loadGoogleIdentity()

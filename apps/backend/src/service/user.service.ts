@@ -1,3 +1,5 @@
+import { TERMS_VERSION } from 'utils'
+
 import type { CardImageRepository } from '../repository/card-image.repository.ts'
 import type { CompanyRepository } from '../repository/company.repository.ts'
 import type { DepartmentRepository } from '../repository/department.repository.ts'
@@ -15,6 +17,8 @@ export interface UserInput {
   name: string
   nameKana?: string | null
   affiliations: AffiliationInput[]
+  /** The `TERMS_VERSION` the user just agreed to. Required to register; ignored if not current. */
+  agreedTermsVersion?: string
 }
 
 export interface MasterRef {
@@ -31,6 +35,7 @@ export interface UserView {
 export interface UserService {
   /** The signed-in user's profile; not found until the welcome screen has saved one. */
   getMe: (userId: string) => Promise<UserView>
+  /** Registers (only with the current terms agreed to) or updates the profile. */
   saveMe: (userId: string, input: UserInput) => Promise<UserView>
   /** Withdrawal: deletes everything the user has, photos included. Succeeds without a profile too. */
   deleteMe: (userId: string) => Promise<void>
@@ -79,6 +84,11 @@ export const createUserService = ({
     saveMe: async (userId, input) => {
       const name = cleanText(input.name)
       if (!name) throw new ServiceError('invalid', 'Name is required')
+      const existing = await userRepository.findById(userId)
+      const agreesNow = input.agreedTermsVersion === TERMS_VERSION
+      if (!existing && !agreesNow) {
+        throw new ServiceError('invalid', 'The terms of service must be agreed to')
+      }
 
       const affiliations: Affiliation[] = []
       for (const affiliation of input.affiliations) {
@@ -97,13 +107,14 @@ export const createUserService = ({
         }
       }
 
-      const existing = await userRepository.findById(userId)
       const now = new Date().toISOString()
       const user: User = {
         id: userId,
         name,
         nameKana: cleanText(input.nameKana),
         affiliations,
+        termsVersion: agreesNow ? TERMS_VERSION : (existing?.termsVersion ?? null),
+        termsAgreedAt: agreesNow ? now : (existing?.termsAgreedAt ?? null),
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       }

@@ -15,6 +15,21 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('../views/LoginView.vue'),
     meta: { public: true },
   },
+  // Not in the design: the terms of service and privacy policy
+  {
+    path: '/terms',
+    name: 'terms',
+    component: () => import('../views/LegalView.vue'),
+    props: { kind: 'terms' },
+    meta: { public: true },
+  },
+  {
+    path: '/privacy',
+    name: 'privacy',
+    component: () => import('../views/LegalView.vue'),
+    props: { kind: 'privacy' },
+    meta: { public: true },
+  },
   // 1a
   { path: '/welcome', name: 'welcome', component: () => import('../views/WelcomeView.vue') },
   // 1b, 1c

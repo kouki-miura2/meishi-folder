@@ -1,7 +1,7 @@
 import { sign } from 'hono/jwt'
 import { expect, test } from 'vite-plus/test'
 
-import { createGoogleAuthGuard } from './auth-guard.google.ts'
+import { createGoogleIdTokenRepository } from './google-id-token.repository.ts'
 
 const CLIENT_ID = 'client-id.apps.googleusercontent.com'
 
@@ -25,7 +25,10 @@ const createKeyPair = async (kid: string) => {
 }
 
 const { privateKey, publicKey } = await createKeyPair('key-1')
-const guard = createGoogleAuthGuard({ clientId: CLIENT_ID, loadKeys: async () => [publicKey] })
+const repository = createGoogleIdTokenRepository({
+  clientId: CLIENT_ID,
+  loadKeys: async () => [publicKey],
+})
 
 const claims = (overrides: Record<string, unknown> = {}) => ({
   iss: 'https://accounts.google.com',
@@ -36,28 +39,37 @@ const claims = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-const requestWith = (authorization?: string) =>
-  new Request('http://localhost/me', authorization ? { headers: { authorization } } : {})
+test('accepts a valid Google ID token and reads the account from its claims', async () => {
+  const token = await sign(
+    claims({
+      email: 'y.yamada@gmail.com',
+      name: '山田 陽子',
+      picture: 'https://example.com/a.png',
+    }),
+    privateKey,
+  )
 
-test('accepts a valid Google ID token and identifies the user by sub', async () => {
-  const token = await sign(claims(), privateKey)
-
-  await expect(guard.authenticate(requestWith(`Bearer ${token}`))).resolves.toEqual({
+  await expect(repository.verify(token)).resolves.toEqual({
     id: 'google-user-1',
+    email: 'y.yamada@gmail.com',
+    name: '山田 陽子',
+    picture: 'https://example.com/a.png',
   })
 })
 
 test('accepts the issuer without the https:// prefix', async () => {
   const token = await sign(claims({ iss: 'accounts.google.com' }), privateKey)
 
-  await expect(guard.authenticate(requestWith(`Bearer ${token}`))).resolves.toEqual({
+  await expect(repository.verify(token)).resolves.toEqual({
     id: 'google-user-1',
+    email: '',
+    name: '',
+    picture: null,
   })
 })
 
-test('rejects a missing or non-Bearer Authorization header', async () => {
-  await expect(guard.authenticate(requestWith())).resolves.toBeNull()
-  await expect(guard.authenticate(requestWith('Basic abc'))).resolves.toBeNull()
+test('rejects something that is not a JWT', async () => {
+  await expect(repository.verify('garbage')).resolves.toBeNull()
 })
 
 test.each([
@@ -67,18 +79,18 @@ test.each([
 ])('rejects %s', async (_label, overrides) => {
   const token = await sign(claims(overrides), privateKey)
 
-  await expect(guard.authenticate(requestWith(`Bearer ${token}`))).resolves.toBeNull()
+  await expect(repository.verify(token)).resolves.toBeNull()
 })
 
 test('rejects a token signed with an unknown key', async () => {
   const other = await createKeyPair('key-1')
   const token = await sign(claims(), other.privateKey)
 
-  await expect(guard.authenticate(requestWith(`Bearer ${token}`))).resolves.toBeNull()
+  await expect(repository.verify(token)).resolves.toBeNull()
 })
 
 test('rejects when the keys cannot be loaded', async () => {
-  const offline = createGoogleAuthGuard({
+  const offline = createGoogleIdTokenRepository({
     clientId: CLIENT_ID,
     loadKeys: async () => {
       throw new Error('network down')
@@ -86,5 +98,5 @@ test('rejects when the keys cannot be loaded', async () => {
   })
   const token = await sign(claims(), privateKey)
 
-  await expect(offline.authenticate(requestWith(`Bearer ${token}`))).resolves.toBeNull()
+  await expect(offline.verify(token)).resolves.toBeNull()
 })

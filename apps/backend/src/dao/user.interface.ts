@@ -8,6 +8,9 @@ export interface UserRecord {
   id: string
   name: string
   name_kana: string | null
+  /** `TERMS_VERSION` the user agreed to on registration; null for users registered before terms existed. */
+  terms_version: string | null
+  terms_agreed_at: string | null
   created_at: string
   updated_at: string
   affiliations: UserAffiliationRecord[]

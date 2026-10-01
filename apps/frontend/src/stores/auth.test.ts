@@ -1,76 +1,50 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, expect, test } from 'vite-plus/test'
 
-import { decodeIdToken, useAuthStore } from './auth.ts'
+import { useAuthStore } from './auth.ts'
 
-const base64url = (value: unknown) =>
-  btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(value))))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
+const inOneDay = () => Math.floor(Date.now() / 1000) + 24 * 3600
 
-/** An unsigned token with the given claims; the store never checks signatures. */
-const fakeToken = (claims: Record<string, unknown>) =>
-  `${base64url({ alg: 'RS256' })}.${base64url(claims)}.signature`
-
-const inOneHour = () => Math.floor(Date.now() / 1000) + 3600
+const profile = (expiresAt = inOneDay()) => ({
+  email: 'y.yamada@gmail.com',
+  name: '山田 陽子',
+  picture: null,
+  expiresAt,
+})
 
 beforeEach(() => {
   setActivePinia(createPinia())
 })
 
-test('decodeIdToken reads the profile claims, Japanese names included', () => {
-  const token = fakeToken({
-    email: 'y.yamada@gmail.com',
-    name: '山田 陽子',
-    picture: 'https://example.com/a.png',
-    exp: 2000000000,
-  })
-
-  expect(decodeIdToken(token)).toEqual({
-    email: 'y.yamada@gmail.com',
-    name: '山田 陽子',
-    picture: 'https://example.com/a.png',
-    expiresAt: 2000000000,
-  })
-})
-
-test('decodeIdToken rejects malformed tokens and tokens without an expiry', () => {
-  expect(decodeIdToken('not-a-token')).toBeNull()
-  expect(decodeIdToken(fakeToken({ email: 'a@example.com' }))).toBeNull()
-})
-
-test('signIn keeps a valid token and exposes its profile', () => {
+test('starts signed out', () => {
   const auth = useAuthStore()
 
-  expect(auth.signIn(fakeToken({ email: 'a@example.com', exp: inOneHour() }))).toBe(true)
-
-  expect(auth.profile?.email).toBe('a@example.com')
-  expect(auth.hasValidToken()).toBe(true)
-  expect(auth.validToken()).toBe(auth.token)
+  expect(auth.profile).toBeNull()
+  expect(auth.isSignedIn()).toBe(false)
 })
 
-test('signIn refuses a token it cannot read', () => {
+test('signIn keeps the profile until it expires', () => {
   const auth = useAuthStore()
 
-  expect(auth.signIn('garbage')).toBe(false)
-  expect(auth.token).toBeNull()
+  auth.signIn(profile())
+
+  expect(auth.profile?.name).toBe('山田 陽子')
+  expect(auth.isSignedIn()).toBe(true)
 })
 
-test('a token about to expire no longer counts as valid', () => {
+test('a session past its expiry no longer counts as signed in', () => {
   const auth = useAuthStore()
-  auth.signIn(fakeToken({ exp: Math.floor(Date.now() / 1000) + 30 }))
+  auth.signIn(profile(Math.floor(Date.now() / 1000) - 1))
 
-  expect(auth.hasValidToken()).toBe(false)
-  expect(auth.validToken()).toBeNull()
+  expect(auth.isSignedIn()).toBe(false)
 })
 
-test('signOut forgets the token', () => {
+test('signOut forgets the profile', () => {
   const auth = useAuthStore()
-  auth.signIn(fakeToken({ exp: inOneHour() }))
+  auth.signIn(profile())
 
   auth.signOut()
 
-  expect(auth.token).toBeNull()
   expect(auth.profile).toBeNull()
+  expect(auth.isSignedIn()).toBe(false)
 })

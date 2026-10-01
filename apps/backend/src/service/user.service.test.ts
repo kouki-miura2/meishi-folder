@@ -1,3 +1,4 @@
+import { TERMS_VERSION } from 'utils'
 import { expect, test } from 'vite-plus/test'
 
 import { ServiceError } from './errors.ts'
@@ -44,6 +45,7 @@ test('saveMe finds or creates the affiliated masters and returns the profile wit
   const view = await service.saveMe('user-1', {
     name: ' 山田 太郎 ',
     nameKana: '',
+    agreedTermsVersion: TERMS_VERSION,
     affiliations: [
       { companyName: 'Acme', departmentName: '営業部' },
       { companyName: 'Beta', departmentName: null },
@@ -64,7 +66,11 @@ test('saveMe finds or creates the affiliated masters and returns the profile wit
 
 test('saveMe drops duplicate affiliations and keeps createdAt on update', async () => {
   const { service, userRepository } = setup()
-  await service.saveMe('user-1', { name: '山田', affiliations: [] })
+  await service.saveMe('user-1', {
+    name: '山田',
+    affiliations: [],
+    agreedTermsVersion: TERMS_VERSION,
+  })
   const createdAt = userRepository.users[0]?.createdAt
 
   const view = await service.saveMe('user-1', {
@@ -78,8 +84,16 @@ test('saveMe drops duplicate affiliations and keeps createdAt on update', async 
 })
 
 test.each([
-  ['a blank name', { name: ' ', affiliations: [] }],
-  ['a blank company name', { name: '山田', affiliations: [{ companyName: ' ' }] }],
+  ['a blank name', { name: ' ', affiliations: [], agreedTermsVersion: TERMS_VERSION }],
+  [
+    'a blank company name',
+    { name: '山田', affiliations: [{ companyName: ' ' }], agreedTermsVersion: TERMS_VERSION },
+  ],
+  ['a registration without agreeing to the terms', { name: '山田', affiliations: [] }],
+  [
+    'a registration agreeing to an old version of the terms',
+    { name: '山田', affiliations: [], agreedTermsVersion: '2000-01-01' },
+  ],
 ])('saveMe rejects %s', async (_label, input) => {
   const { service } = setup()
 
@@ -89,9 +103,31 @@ test.each([
   await expect(result).rejects.toMatchObject({ code: 'invalid' })
 })
 
+test('saveMe records the agreed terms version on registration and keeps it on later updates', async () => {
+  const { service, userRepository } = setup()
+  await service.saveMe('user-1', {
+    name: '山田',
+    affiliations: [],
+    agreedTermsVersion: TERMS_VERSION,
+  })
+  const agreedAt = userRepository.users[0]?.termsAgreedAt
+
+  await service.saveMe('user-1', { name: '山田 太郎', affiliations: [] })
+
+  expect(agreedAt).toEqual(expect.any(String))
+  expect(userRepository.users[0]).toMatchObject({
+    termsVersion: TERMS_VERSION,
+    termsAgreedAt: agreedAt,
+  })
+})
+
 test('deleteMe deletes the profile and every photo, leaving the user to start over', async () => {
   const { service, cardImageRepository } = setup()
-  await service.saveMe('user-1', { name: '山田 太郎', affiliations: [] })
+  await service.saveMe('user-1', {
+    name: '山田 太郎',
+    affiliations: [],
+    agreedTermsVersion: TERMS_VERSION,
+  })
 
   await service.deleteMe('user-1')
 

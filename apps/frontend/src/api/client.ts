@@ -9,25 +9,22 @@ const baseUrl =
   new URL('/api', globalThis.location?.origin ?? 'http://localhost').href
 
 interface ApiClientConfig {
-  /** The Google ID token to send, or null when signed out. */
-  getToken: () => string | null
-  /** Called when the backend rejects the token (expired or revoked). */
+  /** Called when the backend rejects the request for want of a valid session (expired or none). */
   onUnauthorized: () => void
 }
 
-let config: ApiClientConfig = { getToken: () => null, onUnauthorized: () => {} }
+let config: ApiClientConfig = { onUnauthorized: () => {} }
 
 /** Wires the client to the auth state; called once from `main.ts`. */
 export const configureApiClient = (next: ApiClientConfig) => {
   config = next
 }
 
-/** Hono RPC client. Request/response types are inferred from `AppType`, never hand-written. */
+/**
+ * Hono RPC client. Request/response types are inferred from `AppType`, never hand-written. The
+ * session rides on the browser's HttpOnly cookie (same origin), so no credentials are added here.
+ */
 export const apiClient = hc<AppType>(baseUrl, {
-  headers: (): Record<string, string> => {
-    const token = config.getToken()
-    return token ? { Authorization: `Bearer ${token}` } : {}
-  },
   fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
     const res = await fetch(input, {
       ...init,
@@ -59,8 +56,8 @@ interface JsonResponse {
   json: () => Promise<unknown>
 }
 
-/** The body type of the success response(s) in a typed Hono RPC response union (the validators' 400 dropped). */
-type SuccessBody<R extends JsonResponse> = Awaited<ReturnType<Exclude<R, { status: 400 }>['json']>>
+/** The body type of the success response(s) in a typed Hono RPC response union (the errors dropped). */
+type SuccessBody<R extends JsonResponse> = Awaited<ReturnType<Exclude<R, { ok: false }>['json']>>
 
 /** Resolves the JSON body of a successful response, or throws an `ApiError` carrying the status. */
 export const unwrap = async <R extends JsonResponse>(res: R): Promise<SuccessBody<R>> => {

@@ -15,7 +15,7 @@ export const router = createRouter({
 
 router.beforeEach(
   createAuthGuard({
-    isSignedIn: () => useAuthStore().hasValidToken(),
+    isSignedIn: () => useAuthStore().isSignedIn(),
     hasProfile: async () => (await queryClient.fetchQuery(meQueryOptions)) !== null,
   }),
 )

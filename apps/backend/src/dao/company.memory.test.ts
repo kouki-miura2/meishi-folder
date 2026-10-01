@@ -55,6 +55,8 @@ test('isReferenced checks cards and user affiliations', async () => {
     id: 'user-1',
     name: '山田',
     name_kana: null,
+    terms_version: null,
+    terms_agreed_at: null,
     created_at: '',
     updated_at: '',
     affiliations: [{ company_id: 'c-b', department_id: null }],
@@ -77,6 +79,8 @@ test('merge re-points cards, affiliations and departments, folding same-named de
     id: 'user-1',
     name: '山田',
     name_kana: null,
+    terms_version: null,
+    terms_agreed_at: null,
     created_at: '',
     updated_at: '',
     affiliations: [

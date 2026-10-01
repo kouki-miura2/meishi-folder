@@ -35,8 +35,8 @@ export const LIMITS = {
   orphanImageKeepHours: 24,
   /** Pause in typing before the card list searches, in milliseconds. */
   searchDebounceMs: 300,
-  /** How early before its expiry an ID token stops being sent, in seconds. */
-  tokenExpiryMarginSeconds: 60,
+  /** How long a sign-in lasts before Google sign-in is needed again, in hours. Set by the API. */
+  sessionHours: 12,
   /** Timeout of an API request from the UI, in milliseconds. */
   requestTimeoutMs: 3 * 1000,
   /** Timeout of a slow API request from the UI (photo upload, AI extraction), in milliseconds. */

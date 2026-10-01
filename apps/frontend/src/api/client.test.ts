@@ -10,7 +10,7 @@ const initOf = (fetchSpy: ReturnType<typeof fetchReturning>) =>
 
 afterEach(() => {
   vi.restoreAllMocks()
-  configureApiClient({ getToken: () => null, onUnauthorized: () => {} })
+  configureApiClient({ onUnauthorized: () => {} })
 })
 
 test('exposes a typed RPC method for each backend route', () => {
@@ -27,16 +27,7 @@ test('sends requests with an abort signal so they time out', async () => {
   expect(initOf(fetchSpy).signal).toBeInstanceOf(AbortSignal)
 })
 
-test('sends the ID token as a Bearer Authorization header', async () => {
-  const fetchSpy = fetchReturning(new Response('{}'))
-  configureApiClient({ getToken: () => 'id-token', onUnauthorized: () => {} })
-
-  await apiClient.me.$get()
-
-  expect(new Headers(initOf(fetchSpy).headers).get('authorization')).toBe('Bearer id-token')
-})
-
-test('sends no Authorization header while signed out', async () => {
+test('sends no Authorization header: the session is a cookie', async () => {
   const fetchSpy = fetchReturning(new Response('{}'))
 
   await apiClient.me.$get()
@@ -47,7 +38,7 @@ test('sends no Authorization header while signed out', async () => {
 test('reports a 401 so the app can send the user back to sign in', async () => {
   fetchReturning(new Response('{}', { status: 401 }))
   const onUnauthorized = vi.fn()
-  configureApiClient({ getToken: () => 'expired', onUnauthorized })
+  configureApiClient({ onUnauthorized })
 
   await apiClient.me.$get()
 

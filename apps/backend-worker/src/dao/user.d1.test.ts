@@ -25,6 +25,8 @@ const user: UserRecord = {
   id: 'user-1',
   name: '山田 太郎',
   name_kana: null,
+  terms_version: '2026-10-01',
+  terms_agreed_at: '2026-01-01T00:00:00.000Z',
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
   affiliations: [
@@ -48,6 +50,8 @@ test('save replaces the profile and affiliations but keeps created_at', async ()
   await dao.save({
     ...user,
     name: '山田 花子',
+    terms_version: '2027-01-01',
+    terms_agreed_at: '2026-02-01T00:00:00.000Z',
     created_at: '2030-01-01T00:00:00.000Z',
     updated_at: '2026-02-01T00:00:00.000Z',
     affiliations: [],
@@ -56,6 +60,8 @@ test('save replaces the profile and affiliations but keeps created_at', async ()
   await expect(dao.findById('user-1')).resolves.toEqual({
     ...user,
     name: '山田 花子',
+    terms_version: '2027-01-01',
+    terms_agreed_at: '2026-02-01T00:00:00.000Z',
     updated_at: '2026-02-01T00:00:00.000Z',
     affiliations: [],
   })

@@ -8,6 +8,7 @@ import type { CardService, CardView } from './service/card.service.ts'
 import type { CompanyService } from './service/company.service.ts'
 import type { DepartmentService } from './service/department.service.ts'
 import { ServiceError } from './service/errors.ts'
+import type { SessionService } from './service/session.service.ts'
 import type { TopicService } from './service/topic.service.ts'
 import type { UserService } from './service/user.service.ts'
 
@@ -17,6 +18,7 @@ const denyAllGuard: AuthGuard = { authenticate: async () => null }
 const notImplemented = () => {
   throw new Error('not expected in this test')
 }
+const sessionService: SessionService = { signIn: notImplemented }
 const userService: UserService = {
   getMe: notImplemented,
   saveMe: notImplemented,
@@ -52,6 +54,7 @@ const cardService: CardService = {
 /** An app whose services all throw unless a test overrides the ones it exercises. */
 const appWith = (overrides: Partial<AppDependencies> = {}) =>
   createApp({
+    sessionService,
     userService,
     companyService,
     departmentService,
@@ -67,6 +70,9 @@ const json = (method: string, body: unknown): RequestInit => ({
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify(body),
 })
+
+/** What a browser sends with a request from the app's own page (see the CSRF check). */
+const sameOrigin = { 'sec-fetch-site': 'same-origin' }
 
 const topics = [{ id: 't-1', kind: 'project' as const, name: 'Apollo' }]
 const topicServiceReturningTopics: TopicService = { list: async () => topics }
@@ -180,6 +186,68 @@ test('answers 500 without leaking an unexpected error', async () => {
   error.mockRestore()
 })
 
+test('POST /session sets the session cookie and returns the account', async () => {
+  const expiresAt = Math.floor(Date.now() / 1000) + 24 * 3600
+  const signIn = vi.fn(async () => ({
+    token: 'session-token',
+    account: { email: 'a@example.com', name: '山田', picture: null },
+    expiresAt,
+  }))
+  const app = appWith({
+    sessionService: { signIn },
+    auth: { guard: denyAllGuard, enabled: true, excludePaths: ['/session'] },
+  })
+
+  const res = await app.request('/session', json('POST', { idToken: 'google-token' }))
+
+  expect(res.status).toBe(200)
+  expect(await res.json()).toEqual({
+    email: 'a@example.com',
+    name: '山田',
+    picture: null,
+    expiresAt,
+  })
+  expect(signIn).toHaveBeenCalledWith('google-token')
+  const cookie = res.headers.get('set-cookie') ?? ''
+  expect(cookie).toMatch(/^__Host-session=session-token;/)
+  expect(cookie).toContain('HttpOnly')
+  expect(cookie).toContain('Secure')
+  expect(cookie).toContain('SameSite=Strict')
+  expect(cookie).toContain('Path=/')
+  expect(cookie).toContain(`Expires=${new Date(expiresAt * 1000).toUTCString()}`)
+})
+
+test('POST /session answers 401 without a cookie for an invalid Google ID token', async () => {
+  const app = appWith({ sessionService: { signIn: async () => null } })
+
+  const res = await app.request('/session', json('POST', { idToken: 'forged' }))
+
+  expect(res.status).toBe(401)
+  expect(res.headers.has('set-cookie')).toBe(false)
+})
+
+test('DELETE /session clears the session cookie', async () => {
+  const app = appWith({ auth: { guard: denyAllGuard, enabled: true, excludePaths: ['/session'] } })
+
+  const res = await app.request('/session', { method: 'DELETE', headers: sameOrigin })
+
+  expect(res.status).toBe(204)
+  expect(res.headers.get('set-cookie')).toMatch(/^__Host-session=; Max-Age=0;/)
+})
+
+test('rejects a form-style request from another site (CSRF)', async () => {
+  const deleteMe = vi.fn(async () => {})
+  const app = appWith({ userService: { ...userService, deleteMe } })
+
+  const crossSite = await app.request('/me', {
+    method: 'DELETE',
+    headers: { 'sec-fetch-site': 'cross-site', origin: 'https://evil.example.com' },
+  })
+
+  expect(crossSite.status).toBe(403)
+  expect(deleteMe).not.toHaveBeenCalled()
+})
+
 test('GET /me and PUT /me pass the signed-in user to the service', async () => {
   const view = { name: '山田', nameKana: null, affiliations: [] }
   const saveMe = vi.fn(async () => view)
@@ -197,7 +265,7 @@ test('DELETE /me withdraws the signed-in user with 204', async () => {
   const deleteMe = vi.fn(async () => {})
   const app = appWith({ userService: { ...userService, deleteMe } })
 
-  const res = await app.request('/me', { method: 'DELETE' })
+  const res = await app.request('/me', { method: 'DELETE', headers: sameOrigin })
 
   expect(res.status).toBe(204)
   expect(deleteMe).toHaveBeenCalledWith('test-user')
@@ -240,7 +308,9 @@ test('company routes map to the service with the right statuses', async () => {
   ])
   expect((await app.request('/companies', json('POST', { name: 'Acme' }))).status).toBe(201)
   expect((await app.request('/companies/c-1', json('PATCH', { name: 'Acme' }))).status).toBe(200)
-  expect((await app.request('/companies/c-1', { method: 'DELETE' })).status).toBe(204)
+  expect(
+    (await app.request('/companies/c-1', { method: 'DELETE', headers: sameOrigin })).status,
+  ).toBe(204)
   expect(
     (await app.request('/companies/c-1/merge', json('POST', { sourceIds: ['c-2'] }))).status,
   ).toBe(200)
@@ -269,7 +339,9 @@ test('department routes map to the service with the right statuses', async () =>
     (await app.request('/companies/c-1/departments', json('POST', { name: '営業部' }))).status,
   ).toBe(201)
   expect((await app.request('/departments/d-1', json('PATCH', { name: '営業' }))).status).toBe(200)
-  expect((await app.request('/departments/d-1', { method: 'DELETE' })).status).toBe(204)
+  expect(
+    (await app.request('/departments/d-1', { method: 'DELETE', headers: sameOrigin })).status,
+  ).toBe(204)
   expect(
     (await app.request('/departments/d-1/merge', json('POST', { sourceIds: ['d-2'] }))).status,
   ).toBe(200)
@@ -310,7 +382,7 @@ test('POST /images uploads the file and GET /images/:id serves it back', async (
   const form = new FormData()
   form.append('file', new File([bytes], 'card.png', { type: 'image/png' }))
 
-  const uploaded = await app.request('/images', { method: 'POST', body: form })
+  const uploaded = await app.request('/images', { method: 'POST', headers: sameOrigin, body: form })
   const served = await app.request('/images/img-1')
 
   expect(uploaded.status).toBe(201)
@@ -324,7 +396,11 @@ test('POST /images uploads the file and GET /images/:id serves it back', async (
 test('POST /images rejects a request without a file', async () => {
   const app = appWith()
 
-  const res = await app.request('/images', { method: 'POST', body: new FormData() })
+  const res = await app.request('/images', {
+    method: 'POST',
+    headers: sameOrigin,
+    body: new FormData(),
+  })
 
   expect(res.status).toBe(400)
 })
@@ -352,7 +428,7 @@ test('requests with a body over the limit are rejected with 413 before reaching 
   const form = new FormData()
   form.append('file', new File([new Uint8Array(LIMITS.requestBodyBytes + 1)], 'card.png'))
 
-  const res = await app.request('/images', { method: 'POST', body: form })
+  const res = await app.request('/images', { method: 'POST', headers: sameOrigin, body: form })
 
   expect(res.status).toBe(413)
   expect(await res.json()).toEqual({ error: 'Payload Too Large' })
@@ -391,7 +467,9 @@ test('card routes map to the service with the right statuses', async () => {
   expect(
     (await app.request('/cards/card-1', json('PATCH', { visibility: 'company' }))).status,
   ).toBe(200)
-  expect((await app.request('/cards/card-1', { method: 'DELETE' })).status).toBe(204)
+  expect(
+    (await app.request('/cards/card-1', { method: 'DELETE', headers: sameOrigin })).status,
+  ).toBe(204)
 
   expect(service.extract).toHaveBeenCalledWith('test-user', { frontImageId: 'img-1' })
   expect(service.candidates).toHaveBeenCalledWith('test-user', '山田')

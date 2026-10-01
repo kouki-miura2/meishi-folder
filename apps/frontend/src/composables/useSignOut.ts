@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { disableGoogleAutoSelect } from '../lib/google-identity.ts'
 import { forgetLastScene } from '../lib/last-scene.ts'
 import { useAuthStore } from '../stores/auth.ts'
+import { endSession } from './useSession.ts'
 
 /**
  * Signs out for good (no automatic sign-in back), drops every cached response and returns to the
@@ -14,6 +15,7 @@ export const useSignOut = () => {
   const router = useRouter()
   const queryClient = useQueryClient()
   return async () => {
+    await endSession()
     disableGoogleAutoSelect()
     auth.signOut()
     forgetLastScene()

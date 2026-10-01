@@ -38,6 +38,8 @@
   "triggers": {
     "crons": ["0 18 * * *"],
   },
-  // GOOGLE_CLIENT_ID (the OAuth client id that Google ID tokens must be issued for) is supplied
-  // via `.dev.vars` locally and `wrangler secret put GOOGLE_CLIENT_ID` in production.
+  // Secrets, supplied via `.dev.vars` locally and `wrangler secret put <NAME>` in production:
+  // - GOOGLE_CLIENT_ID: the OAuth client id that Google ID tokens must be issued for.
+  // - SESSION_SECRET: the key that signs session cookies (32+ random characters, e.g.
+  //   `openssl rand -base64 32`). Changing it signs everyone out.
 }

@@ -64,6 +64,8 @@ test('merge re-points cards and affiliations without duplicates, then deletes th
     id: 'user-1',
     name: '山田',
     name_kana: null,
+    terms_version: null,
+    terms_agreed_at: null,
     created_at: '',
     updated_at: '',
     affiliations: [{ company_id: 'c-1', department_id: 'd-2' }],

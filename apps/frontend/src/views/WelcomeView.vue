@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TERMS_VERSION } from 'utils'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -36,7 +37,9 @@ watch(
 )
 
 const isFirstTime = computed(() => me.value === null)
-const canSave = computed(() => !!name.value.trim())
+// Registering needs the terms agreed to; the API refuses it otherwise.
+const agreed = ref(false)
+const canSave = computed(() => !!name.value.trim() && (!isFirstTime.value || agreed.value))
 
 const submit = async () => {
   // Saving fills the profile cache, so read this first.
@@ -47,6 +50,7 @@ const submit = async () => {
     affiliations: affiliations.value
       .filter((a) => a.companyName.trim())
       .map((a) => ({ companyName: a.companyName, departmentName: a.departmentName || null })),
+    ...(isFirstTime.value && { agreedTermsVersion: TERMS_VERSION }),
   })
   await router.replace({ name: next })
 }
@@ -105,6 +109,19 @@ const submit = async () => {
     </div>
   </div>
   <div class="bottom-bar flex-column">
+    <v-checkbox v-if="isFirstTime" v-model="agreed" hide-details density="compact" class="terms">
+      <template #label>
+        <span>
+          <a href="/terms" target="_blank" rel="noopener" @click.stop>利用規約</a>と<a
+            href="/privacy"
+            target="_blank"
+            rel="noopener"
+            @click.stop
+            >プライバシーポリシー</a
+          >に同意する
+        </span>
+      </template>
+    </v-checkbox>
     <v-btn
       color="primary"
       class="main-action"
@@ -142,6 +159,14 @@ const submit = async () => {
   gap: 10px;
   padding: 10px 12px;
   font-size: 13px;
+}
+.terms {
+  align-self: center;
+  font-size: 14px;
+}
+.terms a {
+  color: inherit;
+  font-weight: 700;
 }
 .account__text .mono {
   font-size: 12px;

@@ -10,6 +10,9 @@ export interface User {
   name: string
   nameKana: string | null
   affiliations: Affiliation[]
+  /** The terms of service / privacy policy version agreed to, and when. */
+  termsVersion: string | null
+  termsAgreedAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -29,6 +32,8 @@ const toUser = (record: UserRecord): User => ({
     companyId: a.company_id,
     departmentId: a.department_id,
   })),
+  termsVersion: record.terms_version,
+  termsAgreedAt: record.terms_agreed_at,
   createdAt: record.created_at,
   updatedAt: record.updated_at,
 })
@@ -43,6 +48,8 @@ export const createUserRepository = (dao: UserDao): UserRepository => ({
       id: user.id,
       name: user.name,
       name_kana: user.nameKana,
+      terms_version: user.termsVersion,
+      terms_agreed_at: user.termsAgreedAt,
       created_at: user.createdAt,
       updated_at: user.updatedAt,
       affiliations: user.affiliations.map((a) => ({

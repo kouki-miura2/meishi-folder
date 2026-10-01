@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppLogo from '../components/AppLogo.vue'
+import { useSignInMutation } from '../composables/useSession.ts'
 import { initGoogleSignIn } from '../lib/google-identity.ts'
 import { useAuthStore } from '../stores/auth.ts'
 
@@ -12,18 +13,19 @@ const route = useRoute()
 const router = useRouter()
 const button = ref<HTMLElement | null>(null)
 const failed = ref(false)
+const signIn = useSignInMutation()
 
 const redirect = () =>
   router.replace(typeof route.query.redirect === 'string' ? route.query.redirect : '/')
 
 onMounted(async () => {
-  if (auth.hasValidToken()) {
+  if (auth.isSignedIn()) {
     await redirect()
     return
   }
   try {
     const id = await initGoogleSignIn((idToken) => {
-      if (auth.signIn(idToken)) void redirect()
+      signIn.mutate(idToken, { onSuccess: () => void redirect() })
     })
     if (button.value) {
       id.renderButton(button.value, {
@@ -55,7 +57,8 @@ onMounted(async () => {
     </div>
     <div class="flex-grow-1" />
     <div class="login__actions">
-      <div ref="button" class="login__button" />
+      <v-progress-circular v-if="signIn.isPending.value" indeterminate size="44" />
+      <div v-show="!signIn.isPending.value" ref="button" class="login__button" />
       <p v-if="failed" class="text-error text-body-2">
         Google ログインを読み込めませんでした。通信環境を確認して、再読み込みしてください。
       </p>

@@ -3,7 +3,8 @@ import type { UserAffiliationRecord, UserDao, UserRecord } from 'backend/src/dao
 export const createUserDao = (db: D1Database): UserDao => ({
   findById: async (id) => {
     const user = await db
-      .prepare('SELECT id, name, name_kana, created_at, updated_at FROM users WHERE id = ?')
+      .prepare(`SELECT id, name, name_kana, terms_version, terms_agreed_at, created_at, updated_at
+           FROM users WHERE id = ?`)
       .bind(id)
       .first<Omit<UserRecord, 'affiliations'>>()
     if (!user) return null
@@ -19,10 +20,20 @@ export const createUserDao = (db: D1Database): UserDao => ({
     await db.batch([
       db
         .prepare(
-          `INSERT INTO users (id, name, name_kana, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
-           ON CONFLICT (id) DO UPDATE SET name = ?2, name_kana = ?3, updated_at = ?5`,
+          `INSERT INTO users (id, name, name_kana, terms_version, terms_agreed_at, created_at, updated_at)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+           ON CONFLICT (id) DO UPDATE SET
+             name = ?2, name_kana = ?3, terms_version = ?4, terms_agreed_at = ?5, updated_at = ?7`,
         )
-        .bind(record.id, record.name, record.name_kana, record.created_at, record.updated_at),
+        .bind(
+          record.id,
+          record.name,
+          record.name_kana,
+          record.terms_version,
+          record.terms_agreed_at,
+          record.created_at,
+          record.updated_at,
+        ),
       db.prepare('DELETE FROM user_affiliations WHERE user_id = ?').bind(record.id),
       ...record.affiliations.map((a) =>
         db
