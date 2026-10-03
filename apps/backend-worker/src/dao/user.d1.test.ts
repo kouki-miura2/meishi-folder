@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, expect, test } from 'vite-plus/test'
 
 import { createCardDao } from './card.d1.ts'
 import { createCompanyDao } from './company.d1.ts'
+import { createDataVersionDao } from './data-version.d1.ts'
 import { createDepartmentDao } from './department.d1.ts'
 import { createTestEnv } from './test-env.ts'
 import { createTopicDao } from './topic.d1.ts'
@@ -100,6 +101,8 @@ test('deleteAll removes every row the user owns and leaves other users alone', a
     affiliations: [{ company_id: 'user-2-c', department_id: null }],
   })
 
+  for (const owner of ['user-1', 'user-2']) await createDataVersionDao(DB).save(owner, 'v1')
+
   await dao.deleteAll('user-1')
 
   const count = async (sql: string, owner: string) =>
@@ -113,6 +116,7 @@ test('deleteAll removes every row the user owns and leaves other users alone', a
     'cards WHERE user_id = ?',
     'card_departments WHERE card_id IN (SELECT id FROM cards WHERE user_id = ?)',
     'card_topics WHERE card_id IN (SELECT id FROM cards WHERE user_id = ?)',
+    'data_versions WHERE user_id = ?',
   ]
   for (const table of tables) {
     expect(await count(table, 'user-1'), table).toBe(0)

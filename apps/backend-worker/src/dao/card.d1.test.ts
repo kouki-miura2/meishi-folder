@@ -65,37 +65,9 @@ test('insert and findById round-trip the record, join-table ids included', async
 })
 
 test('list orders by kana, falling back to handle name, then name', async () => {
-  const cards = await createCardDao(testEnv.env.DB).list('user-1', {})
+  const cards = await createCardDao(testEnv.env.DB).list('user-1')
 
   expect(cards.map((c) => c.id)).toEqual(['handle', 'kana', 'name-only'])
-})
-
-test('list filters by text across columns and master names, case-insensitively', async () => {
-  const dao = createCardDao(testEnv.env.DB)
-  const ids = async (q: string) => (await dao.list('user-1', { q })).map((c) => c.id)
-
-  await expect(ids('SATO@')).resolves.toEqual(['name-only'])
-  await expect(ids('acme')).resolves.toEqual(['handle'])
-  await expect(ids('research_lab')).resolves.toEqual(['handle'])
-  await expect(ids('book')).resolves.toEqual(['handle'])
-  await expect(ids('demo')).resolves.toEqual(['kana'])
-})
-
-test('list treats LIKE wildcards in the query literally', async () => {
-  const dao = createCardDao(testEnv.env.DB)
-
-  await expect(dao.list('user-1', { q: '%' })).resolves.toEqual([])
-  // As a wildcard, `_` would match the "e" in "Research".
-  await expect(dao.list('user-1', { q: 'Res_arch' })).resolves.toEqual([])
-})
-
-test('list requires every requested topic', async () => {
-  const dao = createCardDao(testEnv.env.DB)
-  const ids = async (topicIds: string[]) =>
-    (await dao.list('user-1', { topicIds })).map((c) => c.id)
-
-  await expect(ids(['t-1'])).resolves.toEqual(['handle', 'name-only'])
-  await expect(ids(['t-1', 't-2'])).resolves.toEqual(['handle'])
 })
 
 test('findByName ignores half- and full-width spaces and never crosses users', async () => {
@@ -133,15 +105,6 @@ test('delete removes the card and its links, only for the owner', async () => {
     "SELECT (SELECT COUNT(*) FROM card_departments WHERE card_id = 'handle') + (SELECT COUNT(*) FROM card_topics WHERE card_id = 'handle') AS n",
   ).first<{ n: number }>()
   expect(links?.n).toBe(0)
-})
-
-test('list with match any requires at least one requested topic', async () => {
-  const cards = await createCardDao(testEnv.env.DB).list('user-1', {
-    topicIds: ['t-2', 'missing'],
-    match: 'any',
-  })
-
-  expect(cards.map((c) => c.id)).toEqual(['handle'])
 })
 
 test('count counts only the given user', async () => {

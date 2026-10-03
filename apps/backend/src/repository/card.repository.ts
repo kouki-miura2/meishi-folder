@@ -1,6 +1,6 @@
-import type { CardDao, CardFilter, CardRecord, Visibility } from '../dao/card.interface.ts'
+import type { CardDao, CardRecord, Visibility } from '../dao/card.interface.ts'
 
-export type { CardFilter, Visibility }
+export type { Visibility }
 
 export interface Office {
   postalCode: string | null
@@ -37,7 +37,7 @@ export interface Card {
 }
 
 export interface CardRepository {
-  list: (userId: string, filter: CardFilter) => Promise<Card[]>
+  list: (userId: string) => Promise<Card[]>
   findById: (userId: string, id: string) => Promise<Card | null>
   findByName: (userId: string, name: string) => Promise<Card[]>
   count: (userId: string) => Promise<number>
@@ -102,7 +102,7 @@ const toRecord = (userId: string, card: Card): CardRecord => ({
 })
 
 export const createCardRepository = (dao: CardDao): CardRepository => ({
-  list: async (userId, filter) => (await dao.list(userId, filter)).map(toCard),
+  list: async (userId) => (await dao.list(userId)).map(toCard),
   findById: async (userId, id) => {
     const record = await dao.findById(userId, id)
     return record ? toCard(record) : null

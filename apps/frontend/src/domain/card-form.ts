@@ -1,12 +1,6 @@
 import { LIMITS, charLength } from 'utils'
 
-import type {
-  CardInput,
-  CardUpdateInput,
-  CardView,
-  ExtractedCard,
-  Visibility,
-} from '../api/types.ts'
+import type { CardInput, CardUpdateInput, CardView, ExtractedCard } from '../api/types.ts'
 
 export interface OfficeForm {
   postalCode: string
@@ -36,7 +30,6 @@ export interface CardForm {
   memo: string
   projectNames: string[]
   groupNames: string[]
-  visibility: Visibility
 }
 
 export const emptyOffice = (): OfficeForm => ({ postalCode: '', address: '', tel: '', fax: '' })
@@ -61,7 +54,6 @@ export const emptyCardForm = (): CardForm => ({
   memo: '',
   projectNames: [],
   groupNames: [],
-  visibility: 'private',
 })
 
 const office = (o: { [K in keyof OfficeForm]: string | null }): OfficeForm => ({
@@ -91,7 +83,6 @@ export const formFromCard = (card: CardView): CardForm => ({
   memo: card.memo ?? '',
   projectNames: card.projects.map((p) => p.name),
   groupNames: card.groups.map((g) => g.name),
-  visibility: card.visibility,
 })
 
 /** A freshly read card: its printed items, with the date it was received defaulting to today. */
@@ -205,7 +196,7 @@ export const toCreateInput = (form: CardForm, images: CardImages): CardInput => 
   ...images,
 })
 
-/** Edits from the detail screen: every field, photos untouched. */
+/** Edits from the detail screen: every field, photos untouched. Visibility stays private. */
 export const toUpdateInput = (form: CardForm): CardUpdateInput => {
   const {
     frontImageId: _front,
@@ -215,7 +206,7 @@ export const toUpdateInput = (form: CardForm): CardUpdateInput => {
     frontImageId: null,
     backImageId: null,
   })
-  return { ...input, visibility: form.visibility }
+  return input
 }
 
 /** Overwriting a registered card with a new scan: photos and printed items only; scene and notes stay. */

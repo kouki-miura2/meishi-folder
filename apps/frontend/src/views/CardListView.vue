@@ -3,7 +3,7 @@ import { LIMITS } from 'utils'
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 
-import type { CardSummary } from '../api/types.ts'
+import type { CardView } from '../api/types.ts'
 import AccountMenu from '../components/AccountMenu.vue'
 import FilterSheet from '../components/FilterSheet.vue'
 import TopicChips from '../components/TopicChips.vue'
@@ -60,13 +60,13 @@ const applyFilter = (next: CardFilter) => {
 }
 
 // A handle name matters more than the reading: with one, the row reads "氏名／ハンドルネーム".
-const title = (card: CardSummary) =>
+const title = (card: CardView) =>
   [card.name, card.handleName].filter(Boolean).join('／') || (card.nameKana ?? '')
-const subtitle = (card: CardSummary) => {
+const subtitle = (card: CardView) => {
   if (card.handleName) return card.name ? '' : 'ハンドルネーム'
   return card.name ? (card.nameKana ?? '') : ''
 }
-const departments = (card: CardSummary) => card.departmentNames.join(' / ')
+const departments = (card: CardView) => card.departments.map((d) => d.name).join(' / ')
 
 // Only the list scrolls, so the router's scrollBehavior (window scroll) can't bring it back when
 // returning from a card. Its position is kept per history entry instead: vue-router numbers each
@@ -180,8 +180,8 @@ const savedScrollTops = new Map<number, number>()
             </div>
             <div class="row__body">
               <div class="row__affiliation">
-                <span class="row__company">{{ card.companyName }}</span
-                ><template v-if="card.companyName && departments(card)"> ／ </template
+                <span class="row__company">{{ card.company?.name }}</span
+                ><template v-if="card.company && departments(card)"> ／ </template
                 >{{ departments(card) }}
               </div>
               <div class="row__name">

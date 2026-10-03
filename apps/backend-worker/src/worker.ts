@@ -4,6 +4,7 @@ import { createCardExtractorRepository } from 'backend/src/repository/card-extra
 import { createCardImageRepository } from 'backend/src/repository/card-image.repository.ts'
 import { createCardRepository } from 'backend/src/repository/card.repository.ts'
 import { createCompanyRepository } from 'backend/src/repository/company.repository.ts'
+import { createDataVersionRepository } from 'backend/src/repository/data-version.repository.ts'
 import { createDepartmentRepository } from 'backend/src/repository/department.repository.ts'
 import { createGoogleIdTokenRepository } from 'backend/src/repository/google-id-token.repository.ts'
 import { createSessionTokenRepository } from 'backend/src/repository/session-token.repository.ts'
@@ -12,6 +13,7 @@ import { createUserRepository } from 'backend/src/repository/user.repository.ts'
 import { createCardImageService } from 'backend/src/service/card-image.service.ts'
 import { createCardService } from 'backend/src/service/card.service.ts'
 import { createCompanyService } from 'backend/src/service/company.service.ts'
+import { createDataVersionService } from 'backend/src/service/data-version.service.ts'
 import { createDepartmentService } from 'backend/src/service/department.service.ts'
 import { createImageCleanupService } from 'backend/src/service/image-cleanup.service.ts'
 import { createMasterResolver } from 'backend/src/service/master-resolver.ts'
@@ -25,6 +27,7 @@ import { createCardExtractorDao } from './dao/card-extractor.workers-ai.ts'
 import { createCardImageDao } from './dao/card-image.r2.ts'
 import { createCardDao } from './dao/card.d1.ts'
 import { createCompanyDao } from './dao/company.d1.ts'
+import { createDataVersionDao } from './dao/data-version.d1.ts'
 import { createDepartmentDao } from './dao/department.d1.ts'
 import { createTopicDao } from './dao/topic.d1.ts'
 import { createUserDao } from './dao/user.d1.ts'
@@ -80,6 +83,9 @@ const createWorkerApp = (env: WorkerEnv) => {
       topicRepository,
       masterResolver,
     }),
+    dataVersionService: createDataVersionService(
+      createDataVersionRepository(createDataVersionDao(env.DB)),
+    ),
     auth: {
       guard: createSessionAuthGuard(sessionTokenRepository),
       enabled: true,

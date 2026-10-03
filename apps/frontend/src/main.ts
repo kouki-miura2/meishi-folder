@@ -1,11 +1,11 @@
-import { VueQueryPlugin } from '@tanstack/vue-query'
+import { VueQueryPlugin, focusManager } from '@tanstack/vue-query'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 
 import { configureApiClient } from './api/client.ts'
 import App from './App.vue'
 import { listenForInstallPrompt } from './composables/useInstallApp.ts'
-import { queryClient } from './plugins/query.ts'
+import { adoptDataVersion, queryClient, syncDataVersion } from './plugins/query.ts'
 import { vuetify } from './plugins/vuetify.ts'
 import { router } from './router/index.ts'
 import { useAuthStore } from './stores/auth.ts'
@@ -24,6 +24,17 @@ configureApiClient({
       void router.replace({ name: 'login', query: { redirect: current.fullPath } })
     }
   },
+  onDataVersion: adoptDataVersion,
+})
+
+// Whether data cached on this device is still current, checked on opening a screen and on coming
+// back to the app (a change made on another device). Offline, the cache just stays as it is.
+const syncIfSignedIn = () => {
+  if (auth.isSignedIn()) syncDataVersion().catch(() => {})
+}
+router.afterEach(syncIfSignedIn)
+focusManager.subscribe((focused) => {
+  if (focused) syncIfSignedIn()
 })
 
 listenForInstallPrompt()

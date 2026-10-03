@@ -4,7 +4,7 @@ import { bodyLimit } from 'hono/body-limit'
 import { deleteCookie, setCookie } from 'hono/cookie'
 import { csrf } from 'hono/csrf'
 import { HTTPException } from 'hono/http-exception'
-import { LIMITS, charLength, createLogger } from 'utils'
+import { DATA_VERSION_HEADER, LIMITS, charLength, createLogger } from 'utils'
 import { z } from 'zod'
 
 import type { AuthGuard, AuthenticatedUser } from './repository/auth-guard.interface.ts'
@@ -12,6 +12,7 @@ import { SESSION_COOKIE } from './repository/auth-guard.session.ts'
 import type { CardImageService } from './service/card-image.service.ts'
 import type { CardService } from './service/card.service.ts'
 import type { CompanyService } from './service/company.service.ts'
+import type { DataVersionService } from './service/data-version.service.ts'
 import type { DepartmentService } from './service/department.service.ts'
 import { ServiceError, type ServiceErrorCode } from './service/errors.ts'
 import type { SessionService } from './service/session.service.ts'
@@ -33,6 +34,7 @@ export interface AppDependencies {
   topicService: TopicService
   cardImageService: CardImageService
   cardService: CardService
+  dataVersionService: DataVersionService
   auth: AuthConfig
 }
 
@@ -44,6 +46,13 @@ const generateRequestId = (): string =>
   Array.from(crypto.getRandomValues(new Uint8Array(4)), (byte) =>
     byte.toString(16).padStart(2, '0'),
   ).join('')
+
+/**
+ * Writes that leave the user's D1 data as it was: a photo upload (photos are immutable per id),
+ * extraction (saves nothing), and withdrawal (deletes the version along with everything else).
+ */
+const keepsDataVersion = (method: string, path: string) =>
+  path === '/images' || path === '/cards/extract' || (method === 'DELETE' && path === '/me')
 
 const statusOf = { not_found: 404, conflict: 409, invalid: 400 } as const satisfies Record<
   ServiceErrorCode,
@@ -159,6 +168,23 @@ export const createApp = (deps: AppDependencies) => {
         }
         await next()
       })
+      // Every successful write gives the user's data a new version (`GET /data-version`), so other
+      // devices know their cached responses are out of date; the writing device reads the new
+      // version off the response. A failure here is only logged: the write itself went through.
+      .use('*', async (c, next) => {
+        await next()
+        const user = c.get('user')
+        if (!user || c.req.method === 'GET' || !c.res.ok) return
+        if (keepsDataVersion(c.req.method, c.req.path)) return
+        try {
+          c.header(DATA_VERSION_HEADER, await deps.dataVersionService.bump(user.id))
+        } catch (error) {
+          logger.error('data version bump failed', {
+            requestId: c.get('requestId'),
+            error: error instanceof Error ? error.stack : String(error),
+          })
+        }
+      })
       // Photos have their own, smaller cap (checked in the service); anything past this is
       // rejected before it is read into memory.
       .use(
@@ -203,6 +229,11 @@ export const createApp = (deps: AppDependencies) => {
         deleteCookie(c, SESSION_COOKIE, { secure: true, path: '/' })
         return c.body(null, 204)
       })
+
+      // Whether the client's cached responses are still current (one row, unlike the lists).
+      .get('/data-version', async (c) =>
+        c.json({ version: await deps.dataVersionService.get(userIdOf(c)) }),
+      )
 
       // User profile (welcome screen)
       .get('/me', async (c) => c.json(await deps.userService.getMe(userIdOf(c))))
@@ -335,31 +366,8 @@ export const createApp = (deps: AppDependencies) => {
       .get('/cards/candidates', zValidator('query', z.object({ name: text })), async (c) =>
         c.json(await deps.cardService.candidates(userIdOf(c), c.req.valid('query').name)),
       )
-      .get(
-        '/cards',
-        zValidator(
-          'query',
-          // topicIds: comma-separated; match: whether a card needs all of them (default) or any.
-          z.object({
-            q: text.optional(),
-            topicIds: z.string().optional(),
-            match: z.enum(['any', 'all']).optional(),
-          }),
-        ),
-        async (c) => {
-          const { q, topicIds, match } = c.req.valid('query')
-          return c.json(
-            await deps.cardService.list(userIdOf(c), {
-              q,
-              topicIds: topicIds?.split(',').filter(Boolean),
-              match,
-            }),
-          )
-        },
-      )
-      .get('/cards/:id', async (c) =>
-        c.json(await deps.cardService.get(userIdOf(c), c.req.param('id'))),
-      )
+      // Every card in full; the client searches and filters them (see docs/spec.md).
+      .get('/cards', async (c) => c.json(await deps.cardService.list(userIdOf(c))))
       .post('/cards', zValidator('json', z.object(cardFields)), async (c) =>
         c.json(await deps.cardService.create(userIdOf(c), c.req.valid('json')), 201),
       )

@@ -17,6 +17,7 @@ const TABLES = [
   'users',
   'departments',
   'companies',
+  'data_versions',
 ]
 
 /**

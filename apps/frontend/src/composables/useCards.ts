@@ -1,42 +1,44 @@
 import type { QueryClient } from '@tanstack/vue-query'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import type { MaybeRefOrGetter } from 'vue'
 import { computed, onScopeDispose, ref, toValue, watch } from 'vue'
 
 import { ApiError, apiClient, longRequest, unwrap } from '../api/client.ts'
 import { CardLimitError } from '../api/errors.ts'
-import type { CardInput, CardUpdateInput } from '../api/types.ts'
-import { type CardFilter, emptyCardFilter, filterToQuery } from '../domain/card-filter.ts'
+import type { CardInput, CardUpdateInput, CardView } from '../api/types.ts'
+import { type CardFilter, filterCards } from '../domain/card-filter.ts'
 
-/** The card list, refetched as the filter changes; the previous results stay up while it loads. */
-export const useCardsQuery = (filter: MaybeRefOrGetter<CardFilter>, queryClient?: QueryClient) =>
-  useQuery(
-    {
-      // Keyed by the API query only: changing the order re-sorts on screen without a refetch.
-      queryKey: ['cards', computed(() => filterToQuery(toValue(filter)))],
-      queryFn: async () =>
-        unwrap(await apiClient.cards.$get({ query: filterToQuery(toValue(filter)) })),
-      placeholderData: keepPreviousData,
-    },
-    queryClient,
-  )
+/** Every card of the user, in full: one cache entry that every search and filter reads from. */
+const cardsQueryOptions = queryOptions({
+  queryKey: ['cards'],
+  queryFn: async () => unwrap(await apiClient.cards.$get()),
+})
 
-/** How many cards the user has: the unfiltered list, shared with the card list's cache. */
+/**
+ * The card list narrowed by the filter. The cards are fetched once and filtered on screen, so a
+ * search or a topic choice changes `data` at once without calling the API.
+ */
+export const useCardsQuery = (filter: MaybeRefOrGetter<CardFilter>, queryClient?: QueryClient) => {
+  const query = useQuery(cardsQueryOptions, queryClient)
+  const data = computed(() => query.data.value && filterCards(query.data.value, toValue(filter)))
+  return { ...query, data }
+}
+
+/** How many cards the user has, from the card list's cache. */
 export const fetchCardCount = async (client: QueryClient) =>
-  (
-    await client.fetchQuery({
-      queryKey: ['cards', filterToQuery(emptyCardFilter())],
-      queryFn: async () => unwrap(await apiClient.cards.$get({ query: {} })),
-    })
-  ).length
+  (await client.fetchQuery(cardsQueryOptions)).length
 
+/** One card, read out of the card list's cache: opening a card calls no API. `null` if it's gone. */
 export const useCardQuery = (id: MaybeRefOrGetter<string>, queryClient?: QueryClient) =>
   useQuery(
-    {
-      queryKey: ['card', id],
-      queryFn: async () =>
-        unwrap(await apiClient.cards[':id'].$get({ param: { id: toValue(id) } })),
-    },
+    computed(() => {
+      // Read here, not inside `select`, so a new id makes new options and the selection reruns.
+      const cardId = toValue(id)
+      return {
+        ...cardsQueryOptions,
+        select: (cards: CardView[]) => cards.find((card) => card.id === cardId) ?? null,
+      }
+    }),
     queryClient,
   )
 
@@ -45,7 +47,6 @@ export const fetchCandidates = (client: QueryClient, name: string) =>
   client.fetchQuery({
     queryKey: ['candidates', name],
     queryFn: async () => unwrap(await apiClient.cards.candidates.$get({ query: { name } })),
-    staleTime: 0,
   })
 
 // Any card change can alter the list, the detail, the candidates and the masters' counts.

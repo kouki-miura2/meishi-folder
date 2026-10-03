@@ -28,26 +28,6 @@ const COLUMNS = [
   'updated_at',
 ] as const satisfies (keyof CardRow)[]
 
-// Every free-text column; the list columns are searched as their JSON text.
-const SEARCHED = [
-  'name',
-  'name_kana',
-  'name_romaji',
-  'titles',
-  'job_types',
-  'mobile',
-  'emails',
-  'other_contacts',
-  'url',
-  'offices',
-  'met_on',
-  'met_at',
-  'met_occasion',
-  'handle_name',
-  'memo',
-] as const satisfies (keyof CardRow)[]
-
-const likePattern = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`
 const withoutSpaces = (value: string) => value.replace(/[ 　]/g, '')
 
 export const createCardDao = (db: D1Database): CardDao => {
@@ -94,26 +74,13 @@ export const createCardDao = (db: D1Database): CardDao => {
   ]
 
   return {
-    list: async (userId, { q, topicIds = [], match = 'all' }) => {
-      const textMatch = SEARCHED.map((column) => `c.${column} LIKE ?2 ESCAPE '\\'`).join(' OR ')
+    list: async (userId) => {
       const { results } = await db
         .prepare(
-          `SELECT c.* FROM cards c
-           WHERE c.user_id = ?1
-             AND (?2 IS NULL OR ${textMatch}
-               OR EXISTS (SELECT 1 FROM companies co
-                          WHERE co.id = c.company_id AND co.name LIKE ?2 ESCAPE '\\')
-               OR EXISTS (SELECT 1 FROM card_departments cd JOIN departments d ON d.id = cd.department_id
-                          WHERE cd.card_id = c.id AND d.name LIKE ?2 ESCAPE '\\')
-               OR EXISTS (SELECT 1 FROM card_topics ct JOIN topics t ON t.id = ct.topic_id
-                          WHERE ct.card_id = c.id AND t.name LIKE ?2 ESCAPE '\\'))
-             AND (json_array_length(?3) = 0 OR
-                  (SELECT COUNT(*) FROM card_topics ct
-                   WHERE ct.card_id = c.id AND ct.topic_id IN (SELECT value FROM json_each(?3)))
-                  >= CASE ?4 WHEN 'any' THEN 1 ELSE json_array_length(?3) END)
-           ORDER BY COALESCE(c.name_kana, c.handle_name, c.name, ''), c.created_at`,
+          `SELECT * FROM cards WHERE user_id = ?
+           ORDER BY COALESCE(name_kana, handle_name, name, ''), created_at`,
         )
-        .bind(userId, q ? likePattern(q) : null, JSON.stringify([...new Set(topicIds)]), match)
+        .bind(userId)
         .all<CardRow>()
       return withIds(userId, results)
     },

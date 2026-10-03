@@ -13,11 +13,10 @@ export type DepartmentListItem = InferResponseType<
   200
 >[number]
 export type Topic = InferResponseType<typeof apiClient.topics.$get, 200>[number]
-export type CardSummary = InferResponseType<typeof apiClient.cards.$get, 200>[number]
-export type CardView = InferResponseType<(typeof apiClient.cards)[':id']['$get'], 200>
+export type CardSummary = InferResponseType<typeof apiClient.cards.candidates.$get, 200>[number]
+export type CardView = InferResponseType<typeof apiClient.cards.$get, 200>[number]
 export type CardInput = InferRequestType<typeof apiClient.cards.$post>['json']
 export type CardUpdateInput = InferRequestType<(typeof apiClient.cards)[':id']['$patch']>['json']
 export type ExtractedCard = InferResponseType<typeof apiClient.cards.extract.$post, 200>
 export type Office = CardView['offices'][number]
-export type Visibility = CardView['visibility']
 export type MasterRef = CardView['departments'][number]

@@ -10,8 +10,8 @@ import { useSignOut } from '../composables/useSignOut.ts'
 import { saveFile } from '../lib/download.ts'
 import { useAuthStore } from '../stores/auth.ts'
 
-// Settings (not in the design): profile and masters, the CSV export, installing the app, outside
-// pages, withdrawal.
+// Settings (not in the design): profile and masters, the CSV export, installing the app, the
+// terms and privacy policy, withdrawal.
 const auth = useAuthStore()
 const router = useRouter()
 const exportCards = useExportCardsMutation()
@@ -20,11 +20,10 @@ const deleteMe = useDeleteMeMutation()
 const signOut = useSignOut()
 const install = useInstallApp()
 
-// Pages still to be written: a row stays disabled until its url is set.
-const links: { title: string; url: string | null }[] = [
-  { title: 'ヘルプ', url: null },
-  { title: '利用規約', url: '/terms' },
-  { title: 'プライバシーポリシー', url: '/privacy' },
+// Opened in place (with a way back), not in a new tab: from the home screen there are no tabs.
+const links = [
+  { title: '利用規約', to: { name: 'terms' } },
+  { title: 'プライバシーポリシー', to: { name: 'privacy' } },
 ]
 
 // Withdrawal takes two steps: the notice, then typing the profile's name as the final check.
@@ -124,14 +123,7 @@ const withdraw = async () => {
 
     <v-list class="panel py-0">
       <template v-for="link in links" :key="link.title">
-        <v-list-item
-          :title="link.title"
-          append-icon="mdi-open-in-new"
-          :href="link.url ?? undefined"
-          target="_blank"
-          rel="noopener"
-          :disabled="!link.url"
-        />
+        <v-list-item :title="link.title" append-icon="mdi-chevron-right" :to="link.to" />
         <v-divider />
       </template>
       <v-list-item

@@ -48,7 +48,6 @@ const urlHref = computed(() => {
   if (!url) return null
   return /^https?:\/\//i.test(url) ? url : `https://${url}`
 })
-const visibilityLabel = { private: '個人', company: '会社', department: '部署' } as const
 </script>
 
 <template>
@@ -204,13 +203,6 @@ const visibilityLabel = { private: '個人', company: '会社', department: '部
       <div v-if="card.memo" class="section-title">メモ</div>
       <div v-if="card.memo" class="panel">
         <div class="panel-row memo">{{ card.memo }}</div>
-      </div>
-
-      <div class="d-flex align-center ga-2 mt-3 muted text-caption">
-        <v-chip color="primary" variant="flat" size="small" prepend-icon="mdi-lock-outline">
-          {{ visibilityLabel[card.visibility] }}
-        </v-chip>
-        公開範囲
       </div>
     </div>
   </div>

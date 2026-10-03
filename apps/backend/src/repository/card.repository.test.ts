@@ -44,7 +44,7 @@ test('findById parses the JSON list columns into the domain entity', async () =>
 test('list and findByName map every record', async () => {
   const repository = createCardRepository(fakeDao())
 
-  await expect(repository.list('user-1', {})).resolves.toHaveLength(1)
+  await expect(repository.list('user-1')).resolves.toHaveLength(1)
   await expect(repository.findByName('user-1', '山田 太郎')).resolves.toHaveLength(1)
 })
 

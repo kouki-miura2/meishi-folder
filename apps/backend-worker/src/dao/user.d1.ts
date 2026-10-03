@@ -56,6 +56,7 @@ export const createUserDao = (db: D1Database): UserDao => ({
         'DELETE FROM topics WHERE user_id = ?',
         'DELETE FROM departments WHERE user_id = ?',
         'DELETE FROM companies WHERE user_id = ?',
+        'DELETE FROM data_versions WHERE user_id = ?',
       ].map((sql) => db.prepare(sql).bind(id)),
     )
   },

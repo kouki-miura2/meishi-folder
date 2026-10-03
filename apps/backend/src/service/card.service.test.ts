@@ -129,7 +129,7 @@ test('update keeps omitted fields and clears fields sent as null', async () => {
 })
 
 test.each(['company', 'department'] as const)(
-  'update rejects %s visibility until mutual authentication exists',
+  'update rejects %s visibility: cards are never shared',
   async (visibility) => {
     const { service } = setup()
     const { id } = await service.create('user-1', registered)
@@ -137,7 +137,7 @@ test.each(['company', 'department'] as const)(
     await expect(service.update('user-1', id, { visibility })).rejects.toMatchObject({
       code: 'invalid',
     })
-    await expect(service.get('user-1', id)).resolves.toMatchObject({ visibility: 'private' })
+    await expect(service.list('user-1')).resolves.toMatchObject([{ visibility: 'private' }])
   },
 )
 
@@ -177,19 +177,19 @@ test('remove deletes the card and its photos', async () => {
   expect([...cardImageRepository.images.keys()]).toEqual(['new-front'])
 })
 
-test('get, update and remove report not_found for an unknown card', async () => {
+test('update and remove report not_found for an unknown card', async () => {
   const { service } = setup()
 
-  await expect(service.get('user-1', 'missing')).rejects.toMatchObject({ code: 'not_found' })
   await expect(service.update('user-1', 'missing', {})).rejects.toMatchObject({
     code: 'not_found',
   })
   await expect(service.remove('user-1', 'missing')).rejects.toMatchObject({ code: 'not_found' })
 })
 
-test('list and candidates return summaries with master names', async () => {
+test('list returns every card in full, and candidates return summaries with master names', async () => {
   const { service } = setup()
-  const { id } = await service.create('user-1', registered)
+  const created = await service.create('user-1', registered)
+  const { id } = created
   const summary = {
     id,
     name: '山田 太郎',
@@ -201,7 +201,7 @@ test('list and candidates return summaries with master names', async () => {
     groups: [{ id: expect.any(String), name: 'Book club' }],
   }
 
-  await expect(service.list('user-1', {})).resolves.toEqual([summary])
+  await expect(service.list('user-1')).resolves.toEqual([created])
   await expect(service.candidates('user-1', ' 山田 太郎 ')).resolves.toEqual([summary])
   await expect(service.candidates('user-1', ' ')).resolves.toEqual([])
 })
@@ -246,7 +246,6 @@ test('exportCsv writes a header and one row per card, multi-values one per line'
     '関連グループ',
     'ハンドルネーム',
     'メモ',
-    '公開範囲',
     '登録日時',
     '更新日時',
   ])
@@ -266,7 +265,6 @@ test('exportCsv writes a header and one row per card, multi-values one per line'
     関連プロジェクト: 'Apollo',
     関連グループ: 'Book club',
     メモ: 'say "hi"',
-    公開範囲: '個人',
     登録日時: createdAt,
   })
   expect(end).toBe('')

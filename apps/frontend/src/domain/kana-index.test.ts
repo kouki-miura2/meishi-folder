@@ -74,8 +74,8 @@ test('sortByCompany orders by company, then departments, then reading; no compan
     kana: string,
   ) => ({
     id,
-    companyName,
-    departmentNames,
+    company: companyName ? { name: companyName } : null,
+    departments: departmentNames.map((name) => ({ name })),
     ...card(kana),
   })
   const cards = [

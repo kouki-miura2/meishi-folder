@@ -92,13 +92,6 @@ export interface CardView {
   updatedAt: string
 }
 
-export interface CardListFilter {
-  q?: string
-  topicIds?: string[]
-  /** `all` (default): every topic; `any`: at least one. */
-  match?: 'any' | 'all'
-}
-
 export interface CardService {
   /** Reads the printed items off the uploaded photos without saving anything. */
   extract: (
@@ -107,8 +100,8 @@ export interface CardService {
   ) => Promise<ExtractedCard>
   /** Registered cards whose name matches (ignoring spaces): possibly the same person. */
   candidates: (userId: string, name: string) => Promise<CardSummary[]>
-  list: (userId: string, filter: CardListFilter) => Promise<CardSummary[]>
-  get: (userId: string, id: string) => Promise<CardView>
+  /** Every card in full: the client searches and filters them itself, so one read serves all. */
+  list: (userId: string) => Promise<CardView[]>
   /** New cards are always private, whatever `input.visibility` says. */
   create: (userId: string, input: CardInput) => Promise<CardView>
   update: (userId: string, id: string, input: CardInput) => Promise<CardView>
@@ -165,11 +158,6 @@ const emptyCard = (id: string, now: string): Card => ({
   updatedAt: now,
 })
 
-const visibilityLabels: Record<Visibility, string> = {
-  private: '個人',
-  company: '会社',
-  department: '部署',
-}
 const officeColumns = ['郵便番号', '住所', '電話', 'FAX'] as const
 
 /** One CSV row per card; multi-valued fields go into one cell, one value per line. */
@@ -201,7 +189,6 @@ const toCsvRows = (cards: CardView[]) => {
     '関連グループ',
     'ハンドルネーム',
     'メモ',
-    '公開範囲',
     '登録日時',
     '更新日時',
   ]
@@ -229,7 +216,6 @@ const toCsvRows = (cards: CardView[]) => {
     names(card.groups),
     card.handleName,
     card.memo,
-    visibilityLabels[card.visibility],
     card.createdAt,
     card.updatedAt,
   ])
@@ -401,16 +387,9 @@ export const createCardService = ({
       ])
       return cards.map(masters.toSummary)
     },
-    list: async (userId, { q, topicIds, match }) => {
-      const [cards, masters] = await Promise.all([
-        cardRepository.list(userId, { q: cleanText(q) ?? undefined, topicIds, match }),
-        loadMasters(userId),
-      ])
-      return cards.map(masters.toSummary)
-    },
-    get: async (userId, id) => {
-      const [card, masters] = await Promise.all([findOrThrow(userId, id), loadMasters(userId)])
-      return masters.toView(card)
+    list: async (userId) => {
+      const [cards, masters] = await Promise.all([cardRepository.list(userId), loadMasters(userId)])
+      return cards.map(masters.toView)
     },
     create: async (userId, input) => {
       // Before resolving the masters, so a refused card leaves no new company or topic behind.
@@ -423,10 +402,9 @@ export const createCardService = ({
       return (await loadMasters(userId)).toView(card)
     },
     update: async (userId, id, input) => {
-      // "company" / "department" share a card with mutually authenticated organizations, which
-      // doesn't exist yet — until then a card can't be made visible beyond its owner.
+      // Cards are never shared: visibility stays "private", and "company" / "department" are refused.
       if (input.visibility !== undefined && input.visibility !== 'private') {
-        throw new ServiceError('invalid', `Visibility ${input.visibility} is not available yet`)
+        throw new ServiceError('invalid', `Visibility ${input.visibility} is not available`)
       }
       const base = await findOrThrow(userId, id)
       const card = await apply(userId, base, input)
@@ -443,10 +421,7 @@ export const createCardService = ({
       if (imageIds(card).length > 0) await cardImageRepository.delete(userId, imageIds(card))
     },
     exportCsv: async (userId) => {
-      const [cards, masters] = await Promise.all([
-        cardRepository.list(userId, {}),
-        loadMasters(userId),
-      ])
+      const [cards, masters] = await Promise.all([cardRepository.list(userId), loadMasters(userId)])
       return toCsv(toCsvRows(cards.map(masters.toView)))
     },
   }

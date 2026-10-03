@@ -12,7 +12,6 @@ export const meQueryOptions = queryOptions({
     if ((res.status as number) === 404) return null
     return unwrap(res)
   },
-  staleTime: 5 * 60_000,
 })
 
 /** `queryClient` is only needed in tests, to run the query outside of a mounted app. */
@@ -25,9 +24,10 @@ export const useSaveMeMutation = (queryClient?: QueryClient) => {
       mutationFn: async (input: SaveMeInput) => unwrap(await apiClient.me.$put({ json: input })),
       onSuccess: (me) => {
         client.setQueryData(meQueryOptions.queryKey, me)
-        // Saving find-or-creates the affiliated companies and departments.
-        void client.invalidateQueries({ queryKey: ['companies'] })
-        void client.invalidateQueries({ queryKey: ['departments'] })
+        // Saving find-or-creates the affiliated companies and departments. Everything else is
+        // refreshed too: this write's data version is recorded as current (see `adoptDataVersion`),
+        // so a change from another device just before it would otherwise go unnoticed.
+        void client.invalidateQueries({ predicate: (query) => query.queryKey[0] !== 'me' })
       },
     },
     client,

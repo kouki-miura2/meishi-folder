@@ -29,17 +29,9 @@ export interface CardRecord {
   topic_ids: string[]
 }
 
-export interface CardFilter {
-  /** Case-insensitive substring match against every text field, master names included. */
-  q?: string
-  topicIds?: string[]
-  /** `all` (default): cards must carry every one of `topicIds`; `any`: at least one of them. */
-  match?: 'any' | 'all'
-}
-
 export interface CardDao {
-  /** Ordered by name_kana, falling back to handle_name, then name. */
-  list: (userId: string, filter: CardFilter) => Promise<CardRecord[]>
+  /** Every card of the user, ordered by name_kana, falling back to handle_name, then name. */
+  list: (userId: string) => Promise<CardRecord[]>
   findById: (userId: string, id: string) => Promise<CardRecord | null>
   /** Matches `name` ignoring whitespace (half- and full-width). */
   findByName: (userId: string, name: string) => Promise<CardRecord[]>

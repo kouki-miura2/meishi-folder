@@ -84,7 +84,6 @@ test('formFromCard and toUpdateInput round-trip a card, names in place of master
     memo: '展示会で\nデモを見せてもらった',
     projectNames: ['スマートビル'],
     groupNames: ['IoT勉強会'],
-    visibility: 'private',
   })
 })
 
@@ -188,7 +187,7 @@ test('fieldsToReview passes well-formed values and flags a missing name', () => 
   expect([...review]).toEqual(['name'])
 })
 
-test('overwritePrinted replaces the printed items and keeps scene, notes and visibility', () => {
+test('overwritePrinted replaces the printed items and keeps scene and notes', () => {
   const form = overwritePrinted(formFromCard(card), extracted)
 
   expect(form).toMatchObject({

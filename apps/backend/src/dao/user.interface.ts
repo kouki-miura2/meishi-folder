@@ -22,7 +22,7 @@ export interface UserDao {
   save: (record: UserRecord) => Promise<void>
   /**
    * Withdrawal: deletes the user and every row they own (affiliations, companies, departments,
-   * topics, cards and their links) in one transaction. Photos are the card image DAO's to delete.
+   * topics, cards and their links, the data version) in one transaction. Photos are the card image DAO's to delete.
    */
   deleteAll: (id: string) => Promise<void>
 }

@@ -32,7 +32,7 @@ export const createImageCleanupService = ({
     let deleted = 0
     for (const [userId, ids] of oldIds) {
       const used = new Set(
-        (await cardRepository.list(userId, {})).flatMap((card) => [
+        (await cardRepository.list(userId)).flatMap((card) => [
           card.frontImageId,
           card.backImageId,
         ]),

@@ -12,5 +12,6 @@ export const createUserDao = (store: MemoryStore): UserDao => ({
     store.departments = store.departments.filter((department) => department.user_id !== id)
     store.topics = store.topics.filter((topic) => topic.user_id !== id)
     store.cards = store.cards.filter((card) => card.user_id !== id)
+    store.dataVersions.delete(id)
   },
 })

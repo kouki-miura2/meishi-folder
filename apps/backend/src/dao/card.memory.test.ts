@@ -25,30 +25,9 @@ const setup = () => {
 test('list orders by kana, falling back to handle name, then name', async () => {
   const { dao } = setup()
 
-  const cards = await dao.list('user-1', {})
+  const cards = await dao.list('user-1')
 
   expect(cards.map((c) => c.id)).toEqual(['handle', 'kana', 'name-only'])
-})
-
-test('list filters by text across columns and master names', async () => {
-  const { dao } = setup()
-
-  const byEmail = await dao.list('user-1', { q: 'SATO@' })
-  const byCompany = await dao.list('user-1', { q: 'acme' })
-  const byTopic = await dao.list('user-1', { q: 'apollo' })
-  const byMemo = await dao.list('user-1', { q: 'demo' })
-
-  expect(byEmail.map((c) => c.id)).toEqual(['name-only'])
-  expect(byCompany.map((c) => c.id)).toEqual(['handle'])
-  expect(byTopic.map((c) => c.id)).toEqual(['name-only'])
-  expect(byMemo.map((c) => c.id)).toEqual(['kana'])
-})
-
-test('list requires every requested topic', async () => {
-  const { dao } = setup()
-
-  await expect(dao.list('user-1', { topicIds: ['t-1'] })).resolves.toHaveLength(1)
-  await expect(dao.list('user-1', { topicIds: ['t-1', 't-2'] })).resolves.toEqual([])
 })
 
 test('findByName ignores half- and full-width spaces and never crosses users', async () => {
@@ -74,14 +53,6 @@ test('findById never crosses users', async () => {
   const { dao } = setup()
 
   await expect(dao.findById('user-1', 'other-user')).resolves.toBeNull()
-})
-
-test('list with match any requires at least one requested topic', async () => {
-  const { dao } = setup()
-
-  const cards = await dao.list('user-1', { topicIds: ['t-1', 't-2'], match: 'any' })
-
-  expect(cards.map((c) => c.id)).toEqual(['name-only'])
 })
 
 test('count counts only the given user', async () => {

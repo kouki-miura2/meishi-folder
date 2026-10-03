@@ -69,9 +69,11 @@ export const groupByIndex = <T extends IndexedName>(cards: readonly T[]): IndexS
   })).filter((section) => section.cards.length > 0)
 
 export interface AffiliatedName extends IndexedName {
-  companyName: string | null
-  departmentNames: string[]
+  company: { name: string } | null
+  departments: { name: string }[]
 }
+
+const departmentLine = (card: AffiliatedName) => card.departments.map((d) => d.name).join('\n')
 
 const collate = (a: string, b: string) =>
   a.normalize('NFKC').localeCompare(b.normalize('NFKC'), 'ja')
@@ -83,8 +85,8 @@ const collate = (a: string, b: string) =>
 export const sortByCompany = <T extends AffiliatedName>(cards: readonly T[]): T[] =>
   [...cards].sort(
     (a, b) =>
-      Number(!a.companyName) - Number(!b.companyName) ||
-      collate(a.companyName ?? '', b.companyName ?? '') ||
-      collate(a.departmentNames.join('\n'), b.departmentNames.join('\n')) ||
+      Number(!a.company) - Number(!b.company) ||
+      collate(a.company?.name ?? '', b.company?.name ?? '') ||
+      collate(departmentLine(a), departmentLine(b)) ||
       sortKeyOf(a).localeCompare(sortKeyOf(b), 'ja'),
   )

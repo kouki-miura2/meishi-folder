@@ -21,7 +21,7 @@ import PrintedChange from './PrintedChange.vue'
 import StringListField from './StringListField.vue'
 import TopicPicker from './TopicPicker.vue'
 
-export type CardFormSection = 'printed' | 'scene' | 'notes' | 'memo' | 'visibility'
+export type CardFormSection = 'printed' | 'scene' | 'notes' | 'memo'
 
 // Every card field, grouped as the design groups them. Used by the confirm step of registration
 // (1f: printed items, scene and memo) and by the edit screen (1i: everything).
@@ -371,26 +371,6 @@ const restore = (field: PrintedField) => {
         @update:model-value="set('memo', $event)"
       />
     </template>
-
-    <template v-if="has('visibility')">
-      <div class="section-title">公開範囲</div>
-      <v-btn-toggle
-        :model-value="form.visibility"
-        mandatory
-        variant="outlined"
-        divided
-        color="primary"
-        class="visibility"
-        @update:model-value="set('visibility', $event)"
-      >
-        <v-btn value="private">個人</v-btn>
-        <v-btn value="company" disabled>会社</v-btn>
-        <v-btn value="department" disabled>部署</v-btn>
-      </v-btn-toggle>
-      <div class="faint mt-2 text-caption">
-        「会社」「部署」は相互認証した組織と共有されます（今後対応）
-      </div>
-    </template>
   </div>
 </template>
 
@@ -421,11 +401,5 @@ const restore = (field: PrintedField) => {
 .notes__label {
   font-size: 11px;
   color: var(--muted);
-}
-.visibility {
-  width: 100%;
-}
-.visibility .v-btn {
-  flex: 1;
 }
 </style>

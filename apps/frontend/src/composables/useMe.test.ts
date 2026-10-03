@@ -46,15 +46,16 @@ test('useMeQuery resolves null, not an error, before the profile exists', async 
   dispose()
 })
 
-test('useSaveMeMutation caches the saved profile and refreshes the masters', async () => {
+test('useSaveMeMutation caches the saved profile and refreshes everything else', async () => {
   vi.mocked(apiClient.me.$put).mockResolvedValue(respond(200, me))
   const { client, result, dispose } = run((c) => useSaveMeMutation(c))
-  const invalidate = vi.spyOn(client, 'invalidateQueries')
+  client.setQueryData(['companies'], [])
 
   await result.mutateAsync({ name: '山田 陽子', affiliations: [] })
 
   expect(client.getQueryData(['me'])).toEqual(me)
-  expect(invalidate).toHaveBeenCalledWith({ queryKey: ['companies'] })
+  expect(client.getQueryState(['me'])?.isInvalidated).toBe(false)
+  expect(client.getQueryState(['companies'])?.isInvalidated).toBe(true)
   dispose()
 })
 

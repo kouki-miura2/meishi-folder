@@ -241,7 +241,7 @@ const save = async () => {
       </v-alert>
       <CardFormFields
         v-model="form"
-        :sections="['printed', 'scene', 'notes', 'memo', 'visibility']"
+        :sections="['printed', 'scene', 'notes', 'memo']"
         :review="review"
         :before="before"
         :show-master-status="!!before"

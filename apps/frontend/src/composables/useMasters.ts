@@ -12,7 +12,6 @@ const ensureOk = (res: { ok: boolean; status: number }) => {
 export const companiesQueryOptions = queryOptions({
   queryKey: ['companies'],
   queryFn: async () => unwrap(await apiClient.companies.$get()),
-  staleTime: 60_000,
 })
 
 /** `queryClient` is only needed in tests, to run the query outside of a mounted app. */
@@ -34,7 +33,6 @@ export const useDepartmentsQuery = (
           }),
         ),
       enabled: computed(() => !!toValue(companyId)),
-      staleTime: 60_000,
     },
     queryClient,
   )
@@ -126,7 +124,6 @@ export const useTopicsQuery = (queryClient?: QueryClient) =>
     {
       queryKey: ['topics'],
       queryFn: async () => unwrap(await apiClient.topics.$get({ query: {} })),
-      staleTime: 60_000,
     },
     queryClient,
   )

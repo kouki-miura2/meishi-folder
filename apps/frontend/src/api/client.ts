@@ -1,6 +1,6 @@
 import type { AppType } from 'backend/src/app.ts'
 import { hc } from 'hono/client'
-import { LIMITS } from 'utils'
+import { DATA_VERSION_HEADER, LIMITS } from 'utils'
 
 // The API is served under /api on the frontend's own origin (the same Worker in production; the
 // dev server's proxy to `wrangler dev` locally). Tests run without a `location`.
@@ -11,9 +11,11 @@ const baseUrl =
 interface ApiClientConfig {
   /** Called when the backend rejects the request for want of a valid session (expired or none). */
   onUnauthorized: () => void
+  /** Called with the user's new data version when a write changed their data. */
+  onDataVersion: (version: string) => void
 }
 
-let config: ApiClientConfig = { onUnauthorized: () => {} }
+let config: ApiClientConfig = { onUnauthorized: () => {}, onDataVersion: () => {} }
 
 /** Wires the client to the auth state; called once from `main.ts`. */
 export const configureApiClient = (next: ApiClientConfig) => {
@@ -31,6 +33,8 @@ export const apiClient = hc<AppType>(baseUrl, {
       signal: init?.signal ?? AbortSignal.timeout(LIMITS.requestTimeoutMs),
     })
     if (res.status === 401) config.onUnauthorized()
+    const version = res.headers.get(DATA_VERSION_HEADER)
+    if (version) config.onDataVersion(version)
     return res
   },
 })

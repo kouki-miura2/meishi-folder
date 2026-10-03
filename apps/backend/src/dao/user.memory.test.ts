@@ -56,6 +56,7 @@ test('deleteAll removes the user and every row they own, leaving other users alo
     })
     store.topics.push({ id: `${owner}-t`, user_id: owner, kind: 'project', name: 'Apollo' })
     store.cards.push(cardRecord({ id: `${owner}-card`, user_id: owner }))
+    store.dataVersions.set(owner, 'v1')
   }
 
   await dao.deleteAll('user-1')
@@ -65,4 +66,5 @@ test('deleteAll removes the user and every row they own, leaving other users alo
   for (const table of [store.companies, store.departments, store.topics, store.cards]) {
     expect(table.map((row) => row.user_id)).toEqual(['user-2'])
   }
+  expect([...store.dataVersions.keys()]).toEqual(['user-2'])
 })

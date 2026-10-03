@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/vue-query'
 import { afterEach, expect, test, vi } from 'vite-plus/test'
-import { effectScope, nextTick, ref } from 'vue'
+import { effectScope, ref } from 'vue'
 
 vi.mock('../api/client.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api/client.ts')>()),
@@ -17,9 +17,10 @@ vi.mock('../api/client.ts', async (importOriginal) => ({
 
 import { apiClient } from '../api/client.ts'
 import { CardLimitError } from '../api/errors.ts'
-import type { CardFilter } from '../domain/card-filter.ts'
+import { type CardFilter, emptyCardFilter } from '../domain/card-filter.ts'
 import {
   fetchCardCount,
+  useCardQuery,
   useCardImageUrl,
   useCreateCardMutation,
   useCardsQuery,
@@ -42,23 +43,42 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-test('useCardsQuery sends only the filters in use, and refetches when they change (not the order)', async () => {
-  vi.mocked(apiClient.cards.$get).mockResolvedValue(respond(200, []))
-  const filter = ref<CardFilter>({ q: '  ', topicIds: [], match: 'any', sort: 'name' })
+test('useCardsQuery fetches every card once and narrows them on screen as the filter changes', async () => {
+  vi.mocked(apiClient.cards.$get).mockResolvedValue(
+    respond(200, [
+      { id: 'a', projects: [], groups: [] },
+      { id: 'b', projects: [{ id: 't-1', name: 'Apollo' }], groups: [] },
+    ]),
+  )
+  const filter = ref<CardFilter>({ q: '', topicIds: [], match: 'any', sort: 'name' })
   const { result, dispose } = run((client) => useCardsQuery(filter, client))
 
-  await vi.waitFor(() => expect(result.isSuccess.value).toBe(true))
-  expect(apiClient.cards.$get).toHaveBeenLastCalledWith({ query: {} })
+  await vi.waitFor(() => expect(result.data.value).toHaveLength(2))
 
-  filter.value = { q: ' 展示会 ', topicIds: ['t-1', 't-2'], match: 'any', sort: 'name' }
-  await vi.waitFor(() => expect(apiClient.cards.$get).toHaveBeenCalledTimes(2))
-  expect(apiClient.cards.$get).toHaveBeenLastCalledWith({
-    query: { q: '展示会', topicIds: 't-1,t-2', match: 'any' },
+  filter.value = { ...filter.value, topicIds: ['t-1'] }
+  expect(result.data.value?.map((card) => card.id)).toEqual(['b'])
+  expect(apiClient.cards.$get).toHaveBeenCalledOnce()
+  dispose()
+})
+
+test('useCardQuery reads the card out of the list cache, null once it is gone', async () => {
+  vi.mocked(apiClient.cards.$get).mockResolvedValue(respond(200, [{ id: 'a' }, { id: 'b' }]))
+  const id = ref('b')
+  const { client, result, dispose } = run((c) => {
+    // As in the app (plugins/query.ts): cached data stays until it is invalidated.
+    c.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } })
+    return useCardsQuery(ref(emptyCardFilter()), c)
   })
+  await vi.waitFor(() => expect(result.data.value).toHaveLength(2))
 
-  filter.value = { ...filter.value, sort: 'company' }
-  await nextTick()
-  expect(apiClient.cards.$get).toHaveBeenCalledTimes(2)
+  const scope = effectScope()
+  const card = scope.run(() => useCardQuery(id, client))!
+  await vi.waitFor(() => expect(card.data.value).toEqual({ id: 'b' }))
+  id.value = 'missing'
+  await vi.waitFor(() => expect(card.data.value).toBeNull())
+
+  expect(apiClient.cards.$get).toHaveBeenCalledOnce()
+  scope.stop()
   dispose()
 })
 
@@ -108,13 +128,12 @@ test('useExportCardsMutation resolves the CSV as a blob and fails on an error st
   dispose()
 })
 
-test('fetchCardCount counts the unfiltered list, sharing the card list cache', async () => {
+test('fetchCardCount counts the cards, sharing the card list cache', async () => {
   vi.mocked(apiClient.cards.$get).mockResolvedValue(respond(200, [{ id: 'a' }, { id: 'b' }]))
   const { client, dispose } = run((c) => c)
 
   await expect(fetchCardCount(client)).resolves.toBe(2)
-  expect(apiClient.cards.$get).toHaveBeenLastCalledWith({ query: {} })
-  expect(client.getQueryData(['cards', {}])).toHaveLength(2)
+  expect(client.getQueryData(['cards'])).toHaveLength(2)
   dispose()
 })
 

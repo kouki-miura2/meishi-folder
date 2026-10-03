@@ -1,4 +1,4 @@
-import { LIMITS } from 'utils'
+import { DATA_VERSION_HEADER, LIMITS } from 'utils'
 import { expect, test, vi } from 'vite-plus/test'
 
 import { createApp, type AppDependencies } from './app.ts'
@@ -6,6 +6,7 @@ import type { AuthGuard } from './repository/auth-guard.interface.ts'
 import type { CardImageService } from './service/card-image.service.ts'
 import type { CardService, CardView } from './service/card.service.ts'
 import type { CompanyService } from './service/company.service.ts'
+import type { DataVersionService } from './service/data-version.service.ts'
 import type { DepartmentService } from './service/department.service.ts'
 import { ServiceError } from './service/errors.ts'
 import type { SessionService } from './service/session.service.ts'
@@ -44,11 +45,16 @@ const cardService: CardService = {
   extract: notImplemented,
   candidates: notImplemented,
   list: notImplemented,
-  get: notImplemented,
   create: notImplemented,
   update: notImplemented,
   remove: notImplemented,
   exportCsv: notImplemented,
+}
+
+// Unlike the others, every write reaches this one, so it works rather than throws.
+const dataVersionService: DataVersionService = {
+  get: async () => null,
+  bump: async () => 'v-new',
 }
 
 /** An app whose services all throw unless a test overrides the ones it exercises. */
@@ -61,6 +67,7 @@ const appWith = (overrides: Partial<AppDependencies> = {}) =>
     topicService,
     cardImageService,
     cardService,
+    dataVersionService,
     auth: { guard: allowAllGuard, enabled: true, excludePaths: [] },
     ...overrides,
   })
@@ -449,7 +456,6 @@ test('card routes map to the service with the right statuses', async () => {
     extract: vi.fn(async () => ({}) as never),
     candidates: vi.fn(async () => []),
     list: vi.fn(async () => []),
-    get: vi.fn(async () => view),
     create: vi.fn(async () => view),
     update: vi.fn(async () => view),
     remove: vi.fn(async () => {}),
@@ -461,8 +467,7 @@ test('card routes map to the service with the right statuses', async () => {
     (await app.request('/cards/extract', json('POST', { frontImageId: 'img-1' }))).status,
   ).toBe(200)
   expect((await app.request('/cards/candidates?name=山田')).status).toBe(200)
-  expect((await app.request('/cards?q=acme&topicIds=t-1,t-2')).status).toBe(200)
-  expect((await app.request('/cards/card-1')).status).toBe(200)
+  expect((await app.request('/cards')).status).toBe(200)
   expect((await app.request('/cards', json('POST', { name: '山田' }))).status).toBe(201)
   expect(
     (await app.request('/cards/card-1', json('PATCH', { visibility: 'company' }))).status,
@@ -473,8 +478,7 @@ test('card routes map to the service with the right statuses', async () => {
 
   expect(service.extract).toHaveBeenCalledWith('test-user', { frontImageId: 'img-1' })
   expect(service.candidates).toHaveBeenCalledWith('test-user', '山田')
-  expect(service.list).toHaveBeenCalledWith('test-user', { q: 'acme', topicIds: ['t-1', 't-2'] })
-  expect(service.get).toHaveBeenCalledWith('test-user', 'card-1')
+  expect(service.list).toHaveBeenCalledWith('test-user')
   expect(service.create).toHaveBeenCalledWith('test-user', { name: '山田' })
   expect(service.update).toHaveBeenCalledWith('test-user', 'card-1', { visibility: 'company' })
   expect(service.remove).toHaveBeenCalledWith('test-user', 'card-1')
@@ -491,4 +495,78 @@ test('card routes reject malformed input with 400', async () => {
 
   expect(badDate.status).toBe(400)
   expect(badVisibility.status).toBe(400)
+})
+
+test("GET /data-version returns the signed-in user's data version", async () => {
+  const get = vi.fn(async () => 'v-1')
+  const app = appWith({ dataVersionService: { ...dataVersionService, get } })
+
+  const res = await app.request('/data-version')
+
+  expect(await res.json()).toEqual({ version: 'v-1' })
+  expect(get).toHaveBeenCalledWith('test-user')
+})
+
+test('a successful write bumps the data version and returns it in a header', async () => {
+  const bump = vi.fn(async () => 'v-2')
+  const app = appWith({
+    dataVersionService: { ...dataVersionService, bump },
+    cardService: { ...cardService, remove: async () => {} },
+  })
+
+  const res = await app.request('/cards/card-1', { method: 'DELETE', headers: sameOrigin })
+
+  expect(res.status).toBe(204)
+  expect(res.headers.get(DATA_VERSION_HEADER)).toBe('v-2')
+  expect(bump).toHaveBeenCalledWith('test-user')
+})
+
+test('reads, failed writes and writes that change no data keep the data version', async () => {
+  const bump = vi.fn(async () => 'v-2')
+  const app = appWith({
+    dataVersionService: { ...dataVersionService, bump },
+    topicService: topicServiceReturningTopics,
+    userService: { ...userService, deleteMe: async () => {} },
+    cardService: {
+      ...cardService,
+      remove: async () => {
+        throw new ServiceError('not_found', 'Card card-1 not found')
+      },
+      extract: async () => ({}) as Awaited<ReturnType<CardService['extract']>>,
+    },
+  })
+
+  const responses = [
+    await app.request('/topics'),
+    await app.request('/cards/card-1', { method: 'DELETE', headers: sameOrigin }),
+    await app.request('/cards/extract', json('POST', { frontImageId: 'img-1' })),
+    await app.request('/me', { method: 'DELETE', headers: sameOrigin }),
+  ]
+
+  expect(responses.map((res) => res.status)).toEqual([200, 404, 200, 204])
+  expect(responses.map((res) => res.headers.get(DATA_VERSION_HEADER))).toEqual([
+    null,
+    null,
+    null,
+    null,
+  ])
+  expect(bump).not.toHaveBeenCalled()
+})
+
+test('a failed version bump still answers the write with its own result', async () => {
+  const app = appWith({
+    dataVersionService: {
+      ...dataVersionService,
+      bump: async () => {
+        throw new Error('D1 unavailable')
+      },
+    },
+    cardService: { ...cardService, remove: async () => {} },
+  })
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+
+  const res = await app.request('/cards/card-1', { method: 'DELETE', headers: sameOrigin })
+
+  expect(res.status).toBe(204)
+  expect(res.headers.get(DATA_VERSION_HEADER)).toBeNull()
 })

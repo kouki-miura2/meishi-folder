@@ -10,7 +10,7 @@ const initOf = (fetchSpy: ReturnType<typeof fetchReturning>) =>
 
 afterEach(() => {
   vi.restoreAllMocks()
-  configureApiClient({ onUnauthorized: () => {} })
+  configureApiClient({ onUnauthorized: () => {}, onDataVersion: () => {} })
 })
 
 test('exposes a typed RPC method for each backend route', () => {
@@ -38,11 +38,23 @@ test('sends no Authorization header: the session is a cookie', async () => {
 test('reports a 401 so the app can send the user back to sign in', async () => {
   fetchReturning(new Response('{}', { status: 401 }))
   const onUnauthorized = vi.fn()
-  configureApiClient({ onUnauthorized })
+  configureApiClient({ onUnauthorized, onDataVersion: () => {} })
 
   await apiClient.me.$get()
 
   expect(onUnauthorized).toHaveBeenCalledOnce()
+})
+
+test('reports the data version a write returns, and nothing for a response without one', async () => {
+  const onDataVersion = vi.fn()
+  configureApiClient({ onUnauthorized: () => {}, onDataVersion })
+  fetchReturning(new Response(null, { status: 204, headers: { 'X-Data-Version': 'v-2' } }))
+
+  await apiClient.cards[':id'].$delete({ param: { id: 'card-1' } })
+  vi.mocked(globalThis.fetch).mockResolvedValue(new Response('{}'))
+  await apiClient.me.$get()
+
+  expect(onDataVersion.mock.calls).toEqual([['v-2']])
 })
 
 test('longRequest keeps its own signal instead of the default timeout', async () => {

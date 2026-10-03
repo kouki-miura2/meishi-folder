@@ -5,8 +5,10 @@ import { useRouter } from 'vue-router'
 
 import AffiliationFields, { type AffiliationForm } from '../components/AffiliationFields.vue'
 import AppLogo from '../components/AppLogo.vue'
+import LegalDocument from '../components/LegalDocument.vue'
 import { useCompaniesQuery } from '../composables/useMasters.ts'
 import { useMeQuery, useSaveMeMutation } from '../composables/useMe.ts'
+import type { LegalDocumentKind } from '../legal/documents.ts'
 import { useAuthStore } from '../stores/auth.ts'
 
 // 1a: the first-time profile, and later the place to change it (from the settings screen).
@@ -39,6 +41,8 @@ watch(
 const isFirstTime = computed(() => me.value === null)
 // Registering needs the terms agreed to; the API refuses it otherwise.
 const agreed = ref(false)
+// The terms open over this screen, not in place of it, so what was typed stays.
+const reading = ref<LegalDocumentKind | null>(null)
 const canSave = computed(() => !!name.value.trim() && (!isFirstTime.value || agreed.value))
 
 const submit = async () => {
@@ -112,11 +116,9 @@ const submit = async () => {
     <v-checkbox v-if="isFirstTime" v-model="agreed" hide-details density="compact" class="terms">
       <template #label>
         <span>
-          <a href="/terms" target="_blank" rel="noopener" @click.stop>利用規約</a>と<a
+          <a href="/terms" @click.stop.prevent="reading = 'terms'">利用規約</a>と<a
             href="/privacy"
-            target="_blank"
-            rel="noopener"
-            @click.stop
+            @click.stop.prevent="reading = 'privacy'"
             >プライバシーポリシー</a
           >に同意する
         </span>
@@ -134,6 +136,17 @@ const submit = async () => {
     </v-btn>
     <div class="text-center faint text-caption">登録データはあなただけが参照できます</div>
   </div>
+
+  <v-dialog :model-value="!!reading" fullscreen scrollable @update:model-value="reading = null">
+    <v-card v-if="reading">
+      <div class="top-bar border-0">
+        <v-btn icon="mdi-chevron-left" variant="text" aria-label="戻る" @click="reading = null" />
+      </div>
+      <v-card-text class="pa-0">
+        <LegalDocument :kind="reading" />
+      </v-card-text>
+    </v-card>
+  </v-dialog>
 </template>
 
 <style scoped>
