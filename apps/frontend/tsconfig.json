@@ -3,7 +3,7 @@
     "target": "es2023",
     "module": "esnext",
     "lib": ["ES2023", "DOM"],
-    "types": ["vite/client", "google.accounts"],
+    "types": ["vite/client", "vite-plugin-pwa/vue", "google.accounts"],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 
