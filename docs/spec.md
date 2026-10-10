@@ -460,7 +460,7 @@
   - AI 抽出: Workers AI（「各論 > AI 抽出」参照）
 - frontend
   - Vue3 + Vuetify4 + vue-router + TanStack Query + Pinia の Webアプリ（SPA・PWA、`apps/frontend`）。
-  - PWA は Web App Manifest（`public/manifest.webmanifest`）とアイコン（`public/icons/`、元の図案は `icon.svg`）だけで、Service Worker は持たない（API なしでは使えないため、オフライン用のキャッシュを持たない）。
+  - PWA は Web App Manifest（`public/manifest.webmanifest`）とアイコン（`public/icons/`、元の図案は `icon.svg`）に加え、新しいバージョンの検出（「共通ルール > 画面 > アプリの更新」）のためだけに Service Worker（`vite-plugin-pwa`）を持つ。Service Worker が端末に保存するのはビルドした静的ファイルだけで、`/api` の応答はキャッシュしない（API なしでは使えないため、オフライン用のデータは持たない）。
 - 配信
   - 画面と API を 1 つの Cloudflare Worker から同じオリジンで配信する。画面は `/`（存在しないパスは SPA の `index.html`）、API は `/api` 配下。
 - 認証

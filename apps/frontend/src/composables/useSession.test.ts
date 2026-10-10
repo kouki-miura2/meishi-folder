@@ -48,6 +48,19 @@ test('useSignInMutation sends the ID token and signs in with the returned profil
   dispose()
 })
 
+test('useSignInMutation drops the cached data of the previous session', async () => {
+  vi.mocked(apiClient.session.$post).mockResolvedValue(respond(200, profile))
+  const { result, dispose } = run((client) => {
+    client.setQueryData(['cards'], ['previous user'])
+    return { mutation: useSignInMutation(client), client }
+  })
+
+  await result.mutation.mutateAsync('google-token')
+
+  expect(result.client.getQueryData(['cards'])).toBeUndefined()
+  dispose()
+})
+
 test('useSignInMutation stays signed out when the API refuses the ID token', async () => {
   vi.mocked(apiClient.session.$post).mockResolvedValue(respond(401))
   const { result, dispose } = run((client) => useSignInMutation(client))
